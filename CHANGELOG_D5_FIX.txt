@@ -1,0 +1,24 @@
+BẢN CẬP NHẬT D5 - 30/08/2026
+
+1. Tài khoản Ban Giám hiệu chính thức: ĐHNN123 / CDRDHNN123.
+   - Vai trò viewer.
+   - Chỉ xem dashboard tổng hợp.
+   - Không được vào /students, /student/<ma_sv>, /admin hoặc /export.
+   - Phân quyền kiểm tra ở phía Flask backend.
+   - Nếu CSDL cũ có tài khoản DHNN123, khi khởi động sẽ được chuyển sang ĐHNN123.
+
+2. Phần trăm dashboard:
+   - Chuẩn hóa hiển thị 2 chữ số thập phân.
+   - Tỷ lệ theo trường được tính/lưu ở độ chính xác 2 chữ số thay vì làm tròn 1 chữ số.
+
+3. Màu trường:
+   - Mỗi trường có màu cố định trong biểu đồ và bảng so sánh.
+   - Có legend màu dưới biểu đồ Lượt thi theo trường.
+
+4. Giao diện:
+   - Hiển thị rõ vai trò đăng nhập trên thanh đầu trang.
+   - Trang đăng nhập mô tả quyền BGH và Phòng KT&ĐBCLGD.
+
+LƯU Ý:
+- Đây là bản chạy nội bộ Flask + SQLite.
+- Khi đưa vào máy chủ dùng chung, cần HTTPS/reverse proxy, SECRET_KEY riêng, sao lưu CSDL và kiểm soát tài khoản quản trị.
