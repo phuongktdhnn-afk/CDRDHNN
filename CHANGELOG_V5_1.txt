@@ -1,0 +1,8 @@
+V5.1 – FIX BIỂU ĐỒ & HOÀN THIỆN DASHBOARD
+- Loại bỏ phụ thuộc Chart.js/CDN bên ngoài; biểu đồ dùng SVG JavaScript nội bộ để tránh màn hình trắng khi Render/trình duyệt không tải CDN.
+- Tổng quan có 6 KPI: tổng lượt dự thi, SV duy nhất, đạt CĐR, chưa đạt, thi >=2 lần chưa đạt, số đợt thi.
+- Bổ sung biểu đồ số đợt thi theo năm, quy mô SV theo năm, cơ cấu kết quả, tỷ lệ đạt theo trường, tăng trưởng SV và kết quả đạt/chưa đạt theo năm.
+- Tỷ lệ % hiển thị 2 chữ số thập phân.
+- Mỗi trường giữ màu riêng.
+- Giữ nguyên xác thực/phân quyền; tài khoản viewer ĐHNN123 chỉ xem dashboard tổng hợp và không hiện nhãn “Ban Giám hiệu”.
+- Giữ nguyên cấu trúc hosting: Root Directory = cdr_web.
