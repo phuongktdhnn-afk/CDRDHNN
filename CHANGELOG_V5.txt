@@ -1,0 +1,11 @@
+DASHBOARD CĐR V5 - mở rộng phân tích theo dữ liệu thực
+- 26,779 bản ghi exam_records trong database đi kèm.
+- 4 năm dữ liệu: 2022-2025.
+- 28 đợt thi, 6 trường, 16 khóa, 7 nhóm kết quả.
+- Bổ sung trang Điều hành.
+- Bổ sung trang Theo năm & tăng trưởng: số đợt, số thí sinh, đạt/chưa đạt, tỷ lệ đạt, tăng trưởng.
+- Bổ sung trang Theo trường với màu riêng từng trường.
+- Bổ sung trang Theo đợt thi.
+- Dữ liệu chi tiết chỉ ADMIN; BGH viewer chỉ xem các trang tổng hợp.
+- Tỷ lệ hiển thị 2 chữ số thập phân.
+- Thay logo bằng logo ĐHNN mới tại static/logo.png.
