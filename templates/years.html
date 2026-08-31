@@ -1,0 +1,25 @@
+{% extends 'base.html' %}{% block content %}
+<div class="pagehead"><div><h1>Phân tích theo năm & tăng trưởng</h1><p>Theo dõi số đợt thi, số thí sinh, kết quả và mức tăng/giảm qua từng năm.</p></div></div>
+<div class="grid">
+<div class="card"><h3>Số đợt thi theo năm</h3><div class="chartbox" id="rounds"></div></div>
+<div class="card"><h3>Số thí sinh theo năm</h3><div class="chartbox" id="students"></div></div>
+<div class="card"><h3>Tỷ lệ đạt CĐR theo năm</h3><div class="chartbox" id="rate"></div></div>
+<div class="card"><h3>Tăng trưởng số sinh viên</h3><div class="chartbox" id="growth"></div></div>
+<div class="card" style="grid-column:1/-1"><h3>Kết quả đạt/chưa đạt theo năm</h3><div class="chartbox" style="height:350px" id="resultYear"></div></div>
+</div>
+<div class="card" style="margin-top:15px"><h3>Bảng tổng hợp theo năm</h3><div class="tablewrap"><table class="table"><tr><th>Năm</th><th>Đợt thi</th><th>Lượt thi</th><th>SV duy nhất</th><th>Đạt</th><th>Chưa đạt</th><th>Tỷ lệ đạt</th><th>Tăng trưởng SV</th><th>Biến động tỷ lệ đạt</th></tr>
+{% for x in rows %}<tr><td><b>{{x.year}}</b></td><td>{{x.rounds}}</td><td>{{x.attempts}}</td><td>{{x.students}}</td><td>{{x.achieved}}</td><td>{{x.not}}</td><td><b>{{'%.2f'|format(x.rate)}}%</b></td>
+<td>{% if x.growth_students is none %}—{% elif x.growth_students>=0 %}<span class="up">+{{'%.2f'|format(x.growth_students)}}%</span>{% else %}<span class="down">{{'%.2f'|format(x.growth_students)}}%</span>{% endif %}</td>
+<td>{% if x.growth_rate_pp is none %}—{% elif x.growth_rate_pp>=0 %}<span class="up">+{{'%.2f'|format(x.growth_rate_pp)}} điểm %</span>{% else %}<span class="down">{{'%.2f'|format(x.growth_rate_pp)}} điểm %</span>{% endif %}</td></tr>{% endfor %}
+</table></div></div>
+<script>
+const D={{rows|tojson}};
+CDRCharts.bar('rounds',D,{value:d=>d.rounds,x:d=>d.year,extra:d=>`Lượt thi: ${d.attempts.toLocaleString('vi-VN')}`});
+CDRCharts.bar('students',D,{value:d=>d.students,x:d=>d.year});
+CDRCharts.line('rate',D,{value:d=>d.rate,x:d=>d.year,max:100,percent:true});
+CDRCharts.bar('growth',D.slice(1).map(d=>({label:d.year,value:d.growth_students||0})),{value:d=>d.value,color:d=>d.value>=0?'#16a34a':'#dc2626',extra:d=>`Tăng trưởng: ${Number(d.value).toFixed(2)}%`});
+CDRCharts.groupedBar('resultYear',D,[
+ {label:'Đạt',value:d=>d.achieved,color:'#16a34a',percent:d=>d.rate},
+ {label:'Chưa đạt',value:d=>d.not,color:'#dc2626',percent:d=>100-d.rate}
+],{x:d=>d.year});
+</script>{% endblock %}

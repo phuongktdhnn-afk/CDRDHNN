@@ -1,0 +1,8 @@
+{% extends 'base.html' %}{% block content %}
+<div class="pagehead"><div><h1>Phân tích theo đợt thi</h1><p>Theo dõi từng đợt: quy mô, số sinh viên và tỷ lệ đạt.</p></div></div>
+<div class="card"><h3>Quy mô sinh viên theo từng đợt</h3><div class="chartbox tall" id="roundPageChart"></div></div>
+<div class="card" style="margin-top:15px"><h3>Chi tiết các đợt thi trong dữ liệu</h3><div class="tablewrap"><table class="table"><tr><th>Năm</th><th>Đợt thi</th><th>Lượt thi</th><th>SV duy nhất</th><th>Đạt</th><th>Chưa đạt</th><th>Tỷ lệ đạt</th></tr>
+{% for x in rows %}<tr><td>{{x.year}}</td><td>{{x.round}}</td><td>{{x.attempts}}</td><td>{{x.students}}</td><td>{{x.achieved}}</td><td>{{x.not_}}</td><td><b>{{'%.2f'|format(x.rate)}}%</b></td></tr>{% endfor %}
+</table></div></div>
+<script>const D={{rows|tojson}};CDRCharts.bar('roundPageChart',D,{value:d=>d.students,x:d=>`${d.year} • ${d.round}`,extra:d=>`Đạt: ${d.achieved.toLocaleString('vi-VN')} • ${Number(d.rate).toFixed(2)}%`});</script>
+{% endblock %}
