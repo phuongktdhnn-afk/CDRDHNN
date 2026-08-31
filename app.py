@@ -61,6 +61,7 @@ def init_db():
     CREATE INDEX IF NOT EXISTS idx_exam_sv ON exam_records(ma_sv);
     CREATE INDEX IF NOT EXISTS idx_exam_year ON exam_records(nam);
     CREATE INDEX IF NOT EXISTS idx_exam_round ON exam_records(dot_thi);
+    CREATE TABLE IF NOT EXISTS login_logs(id INTEGER PRIMARY KEY AUTOINCREMENT,user_id INTEGER,username TEXT NOT NULL,success INTEGER NOT NULL,login_at TEXT NOT NULL DEFAULT (datetime('now','localtime')),ip_address TEXT,user_agent TEXT);
     ''')
     if not c.execute("SELECT 1 FROM users WHERE username='admin'").fetchone():
         c.execute('INSERT INTO users(username,password_hash,role,school) VALUES(?,?,?,?)',('admin',generate_password_hash(PASS_DEFAULT),'admin',None))
@@ -192,8 +193,15 @@ def health(): return {'status':'ok'}
 def login():
     if request.method=='POST':
         username=request.form.get('username','').strip(); password=request.form.get('password','')
-        c=db(); u=c.execute('SELECT * FROM users WHERE username=? AND active=1',(username,)).fetchone(); c.close()
-        if u and check_password_hash(u['password_hash'],password):
+        ip=request.headers.get('X-Forwarded-For', request.remote_addr or '')
+        ip=ip.split(',')[0].strip()
+        ua=request.headers.get('User-Agent','')
+        c=db(); u=c.execute('SELECT * FROM users WHERE username=? AND active=1',(username,)).fetchone()
+        ok=bool(u and check_password_hash(u['password_hash'],password))
+        c.execute('INSERT INTO login_logs(user_id,username,success,ip_address,user_agent) VALUES(?,?,?,?,?)',
+                  (u['id'] if u else None, username, 1 if ok else 0, ip, ua))
+        c.commit(); c.close()
+        if ok:
             session.clear(); session['uid']=u['id']
             if u['must_change_password']: return redirect(url_for('change_password'))
             return redirect(url_for('index'))
@@ -277,7 +285,7 @@ def data_view():
 @app.route('/admin')
 @admin_required
 def admin():
-    c=db(); users=c.execute('SELECT id,username,role,school,active,must_change_password FROM users ORDER BY role DESC,username').fetchall(); n=c.execute('SELECT COUNT(*) n FROM exam_records').fetchone()['n'];c.close(); return render_template('admin.html',users=users,n=n,default_password=PASS_DEFAULT)
+    c=db(); users=c.execute('SELECT id,username,role,school,active,must_change_password FROM users ORDER BY role DESC,username').fetchall(); n=c.execute('SELECT COUNT(*) n FROM exam_records').fetchone()['n']; logs=c.execute('SELECT login_at,username,success,ip_address,user_agent FROM login_logs ORDER BY id DESC LIMIT 500').fetchall(); c.close(); return render_template('admin.html',users=users,n=n,default_password=PASS_DEFAULT,logs=logs)
 
 @app.post('/admin/upload')
 @admin_required
