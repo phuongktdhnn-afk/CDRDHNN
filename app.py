@@ -309,9 +309,24 @@ def toggle_user(uid):
 @app.route('/export')
 @admin_required
 def export_csv():
-    c=db(); rows=c.execute('SELECT tt,sbd,ma_sv,ho_ten,ngay_sinh,noi_sinh,lop,khoa,ket_qua,truong,dot_thi,nam FROM exam_records ORDER BY truong,ma_sv,nam').fetchall();c.close()
-    out=io.StringIO();w=csv.writer(out);w.writerow(['TT','SBD','Mã SV','Họ tên','Ngày sinh','Nơi sinh','Lớp','Khóa','Kết quả','Trường','Đợt thi','Năm']);w.writerows([tuple(r) for r in rows]);out.seek(0)
+    u=current_user(); W,p=filter_parts(u,request.args); c=db()
+    rows=c.execute(f'SELECT tt,sbd,ma_sv,ho_ten,ngay_sinh,noi_sinh,lop,khoa,ket_qua,truong,dot_thi,nam FROM exam_records{W} ORDER BY truong,ma_sv,nam',p).fetchall(); c.close()
+    out=io.StringIO(); w=csv.writer(out)
+    w.writerow(['TT','SBD','Mã SV','Họ tên','Ngày sinh','Nơi sinh','Lớp','Khóa','Kết quả','Trường','Đợt thi','Năm'])
+    w.writerows([tuple(r) for r in rows]); out.seek(0)
     return send_file(io.BytesIO(out.getvalue().encode('utf-8-sig')),as_attachment=True,download_name='du_lieu_CDR.csv',mimetype='text/csv')
+
+@app.route('/export.xlsx')
+@admin_required
+def export_xlsx():
+    u=current_user(); W,p=filter_parts(u,request.args); c=db()
+    df=pd.read_sql_query(f'SELECT tt,sbd,ma_sv,ho_ten,ngay_sinh,noi_sinh,lop,khoa,ket_qua,truong,dot_thi,nam FROM exam_records{W} ORDER BY truong,ma_sv,nam',c,params=p)
+    c.close()
+    out=io.BytesIO()
+    with pd.ExcelWriter(out,engine='openpyxl') as writer:
+        df.to_excel(writer,index=False,sheet_name='Du lieu CDR')
+    out.seek(0)
+    return send_file(out,as_attachment=True,download_name='du_lieu_CDR.xlsx',mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
 
 init_db()
 if __name__=='__main__': app.run(host=os.environ.get('HOST','0.0.0.0'),port=int(os.environ.get('PORT','5000')))

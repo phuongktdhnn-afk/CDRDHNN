@@ -2,7 +2,10 @@
 <div class="pagehead"><div><h1>Phân tích theo đợt thi</h1><p>Theo dõi từng đợt: quy mô, số sinh viên và tỷ lệ đạt.</p></div></div>
 <div class="card"><h3>Quy mô sinh viên theo từng đợt</h3>
 <div class="desc">Hiển thị <b>SV duy nhất</b> theo từng đợt; số <b>lượt thi</b> được đối chiếu riêng trong bảng bên dưới.</div>
-<div class="chartbox roundbox" id="roundPageChart"></div></div>
+<div class="chartbox roundbox" id="roundPageChart"></div><div class="chart-actions">
+<button type="button" class="btn-mini" onclick="CDRCharts.exportPNG('roundPageChart','quy_mo_sinh_vien_theo_dot')">⬇ Xuất PNG</button>
+<button type="button" class="btn-mini" onclick="CDRCharts.exportSVG('roundPageChart','quy_mo_sinh_vien_theo_dot')">⬇ Xuất SVG</button>
+</div></div>
 <div class="card" style="margin-top:15px"><h3>Chi tiết các đợt thi trong dữ liệu</h3><div class="desc">Quy ước: <b>Lượt thi</b> = số bản ghi trong đợt; <b>SV duy nhất</b> = số mã SV không trùng. Vì vậy, nếu có trùng mã SV trong cùng đợt thì Lượt thi có thể lớn hơn SV duy nhất.</div><div class="tablewrap"><table class="table"><tr><th>Năm</th><th>Đợt thi</th><th>Lượt thi</th><th>SV duy nhất</th><th>Chênh lệch</th><th>Đạt</th><th>Chưa đạt</th><th>Tỷ lệ đạt</th></tr>
 {% for x in rows %}<tr><td>{{x.year}}</td><td>{{x.round}}</td><td>{{'{:,}'.format(x.attempts).replace(',','.')}}</td><td>{{'{:,}'.format(x.students).replace(',','.')}}</td><td>{{'{:,}'.format(x.attempts-x.students).replace(',','.')}}</td><td>{{'{:,}'.format(x.achieved).replace(',','.')}}</td><td>{{'{:,}'.format(x.not_).replace(',','.')}}</td><td><b>{{'%.2f'|format(x.rate)}}%</b></td></tr>{% endfor %}
 </table></div></div>

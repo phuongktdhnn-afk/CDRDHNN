@@ -6,7 +6,7 @@
 {% if user.role=='admin' %}<select name="school"><option value="">Tất cả trường</option>{% for x in opts.truong %}<option value="{{x}}">{{x}}</option>{% endfor %}</select>{% endif %}
 <select name="round"><option value="">Tất cả đợt thi</option>{% for x in opts.dot_thi %}<option value="{{x}}">{{x}}</option>{% endfor %}</select>
 <select name="result"><option value="">Tất cả kết quả</option>{% for x in opts.ket_qua %}<option value="{{x}}">{{x}}</option>{% endfor %}</select>
-<button class="btn">Lọc</button><a class="btn light" href="{{url_for('index')}}">Xóa lọc</a></form>
+<button class="btn">Lọc</button><a class="btn light" href="{{url_for('index')}}">Xóa lọc</a></form>{% if user.role=='admin' %}<div class="data-actions"><a class="btn" href="{{url_for('export_csv',year=filters.year,cohort=filters.cohort,school=filters.school,round=filters.round,result=filters.result)}}">⬇ Xuất CSV dữ liệu</a><a class="btn light" href="{{url_for('export_xlsx',year=filters.year,cohort=filters.cohort,school=filters.school,round=filters.round,result=filters.result)}}">⬇ Xuất Excel dữ liệu</a></div>{% endif %}
 
 <div class="kpis">
 <div class="kpi"><div class="label">Tổng lượt dự thi</div><div class="num">{{'{:,}'.format(d.total).replace(',','.')}}</div><div class="hint">Tất cả bản ghi trong phạm vi lọc</div></div>
@@ -18,13 +18,25 @@
 </div>
 
 <div class="grid">
-<div class="card"><h3>Quy mô theo năm</h3><div class="desc">Số sinh viên duy nhất và số đợt thi theo từng năm.</div><div class="chartbox" id="yearChart"></div></div>
-<div class="card"><h3>Cơ cấu kết quả</h3><div class="desc">Số lượt thi và tỷ lệ % theo loại kết quả.</div><div class="chartbox" id="resultChart"></div></div>
-<div class="card"><h3>So sánh tỷ lệ đạt theo trường</h3><div class="desc">Mỗi trường một màu; tính theo sinh viên duy nhất.</div><div class="chartbox" id="schoolChart"></div></div>
-<div class="card"><h3>Tăng trưởng số sinh viên theo năm</h3><div class="desc">Mức tăng/giảm so với năm liền trước.</div><div class="chartbox" id="growthChart"></div></div>
+<div class="card"><h3>Quy mô theo năm</h3><div class="desc">Số sinh viên duy nhất và số đợt thi theo từng năm.</div><div class="chartbox" id="yearChart"></div><div class="chart-actions">
+<button type="button" class="btn-mini" onclick="CDRCharts.exportPNG('yearChart','quy_mo_theo_nam')">⬇ Xuất PNG</button>
+<button type="button" class="btn-mini" onclick="CDRCharts.exportSVG('yearChart','quy_mo_theo_nam')">⬇ Xuất SVG</button>
+</div></div>
+<div class="card"><h3>Cơ cấu kết quả</h3><div class="desc">Số lượt thi và tỷ lệ % theo loại kết quả.</div><div class="chartbox" id="resultChart"></div><div class="chart-actions">
+<button type="button" class="btn-mini" onclick="CDRCharts.exportPNG('resultChart','co_cau_ket_qua')">⬇ Xuất PNG</button>
+<button type="button" class="btn-mini" onclick="CDRCharts.exportSVG('resultChart','co_cau_ket_qua')">⬇ Xuất SVG</button>
+</div></div>
+<div class="card"><h3>So sánh tỷ lệ đạt theo trường</h3><div class="desc">Mỗi trường một màu; tính theo sinh viên duy nhất.</div><div class="chartbox" id="schoolChart"></div><div class="chart-actions">
+<button type="button" class="btn-mini" onclick="CDRCharts.exportPNG('schoolChart','so_sanh_ty_le_dat_theo_truong')">⬇ Xuất PNG</button>
+<button type="button" class="btn-mini" onclick="CDRCharts.exportSVG('schoolChart','so_sanh_ty_le_dat_theo_truong')">⬇ Xuất SVG</button>
+</div></div>
+<div class="card"><h3>Tăng trưởng số sinh viên theo năm</h3><div class="desc">Mức tăng/giảm so với năm liền trước.</div><div class="chartbox" id="growthChart"></div><div class="chart-actions">
+<button type="button" class="btn-mini" onclick="CDRCharts.exportPNG('growthChart','tang_truong_sv_theo_nam')">⬇ Xuất PNG</button>
+<button type="button" class="btn-mini" onclick="CDRCharts.exportSVG('growthChart','tang_truong_sv_theo_nam')">⬇ Xuất SVG</button>
+</div></div>
 <div class="card" style="grid-column:1/-1"><h3>Kết quả theo năm</h3><div class="desc">Đạt, chưa đạt, số đợt thi và tỷ lệ đạt; số lượng hiển thị trực tiếp trên biểu đồ.</div><div class="chartbox" style="height:350px" id="annualResultChart"></div></div>
 <div class="card" style="grid-column:1/-1"><h3>Bảng tổng hợp theo năm</h3>
-<div class="tablewrap"><table class="table"><tr><th>Năm</th><th>Đợt thi</th><th>Lượt thi</th><th>SV duy nhất</th><th>Đạt</th><th>Chưa đạt</th><th>Tỷ lệ đạt</th><th>Tăng trưởng SV</th></tr>
+<div class="tablewrap"><table class="table"><tr><th>Năm</th><th>Đợt thi</th><th>Lượt thi</th><th>SV duy nhất</th><th>Đạt</th><th>Chưa đạt</th><th>Tỷ lệ đạt</th><th>Tăng trưởng SV<div class="note-calc">Tính = (SV duy nhất năm nay − SV duy nhất năm trước) ÷ SV duy nhất năm trước × 100.</div></th></tr>
 {% for x in years %}<tr><td><b>{{x.year}}</b></td><td>{{x.rounds}}</td><td>{{x.attempts}}</td><td>{{x.students}}</td><td>{{x.achieved}}</td><td>{{x.not}}</td><td><b>{{'%.2f'|format(x.rate)}}%</b></td><td>{% if x.growth_students is none %}—{% elif x.growth_students>=0 %}<span class="up">+{{'%.2f'|format(x.growth_students)}}%</span>{% else %}<span class="down">{{'%.2f'|format(x.growth_students)}}%</span>{% endif %}</td></tr>{% endfor %}
 </table></div></div>
 </div>

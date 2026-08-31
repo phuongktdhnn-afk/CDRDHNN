@@ -1,13 +1,28 @@
 {% extends 'base.html' %}{% block content %}
 <div class="pagehead"><div><h1>Phân tích theo năm & tăng trưởng</h1><p>Theo dõi số đợt thi, số thí sinh, kết quả và mức tăng/giảm qua từng năm.</p></div></div>
 <div class="grid">
-<div class="card"><h3>Số đợt thi theo năm</h3><div class="chartbox" id="rounds"></div></div>
-<div class="card"><h3>Số thí sinh theo năm</h3><div class="chartbox" id="students"></div></div>
-<div class="card"><h3>Tỷ lệ đạt CĐR theo năm</h3><div class="chartbox" id="rate"></div></div>
-<div class="card"><h3>Tăng trưởng số sinh viên theo năm</h3><div class="desc">Năm đầu tiên được giữ lại làm mốc; các năm sau thể hiện mức tăng/giảm so với năm liền trước.</div><div class="chartbox growthbox" id="growth"></div></div>
-<div class="card" style="grid-column:1/-1"><h3>Kết quả đạt/chưa đạt theo năm</h3><div class="chartbox" style="height:350px" id="resultYear"></div></div>
+<div class="card"><h3>Số đợt thi theo năm</h3><div class="chartbox" id="rounds"></div><div class="chart-actions">
+<button type="button" class="btn-mini" onclick="CDRCharts.exportPNG('rounds','so_dot_thi_theo_nam')">⬇ Xuất PNG</button>
+<button type="button" class="btn-mini" onclick="CDRCharts.exportSVG('rounds','so_dot_thi_theo_nam')">⬇ Xuất SVG</button>
+</div></div>
+<div class="card"><h3>Số thí sinh theo năm</h3><div class="chartbox" id="students"></div><div class="chart-actions">
+<button type="button" class="btn-mini" onclick="CDRCharts.exportPNG('students','so_sinh_vien_theo_nam')">⬇ Xuất PNG</button>
+<button type="button" class="btn-mini" onclick="CDRCharts.exportSVG('students','so_sinh_vien_theo_nam')">⬇ Xuất SVG</button>
+</div></div>
+<div class="card"><h3>Tỷ lệ đạt CĐR theo năm</h3><div class="chartbox" id="rate"></div><div class="chart-actions">
+<button type="button" class="btn-mini" onclick="CDRCharts.exportPNG('rate','ty_le_dat_theo_nam')">⬇ Xuất PNG</button>
+<button type="button" class="btn-mini" onclick="CDRCharts.exportSVG('rate','ty_le_dat_theo_nam')">⬇ Xuất SVG</button>
+</div></div>
+<div class="card"><h3>Tăng trưởng số sinh viên theo năm</h3><div class="desc">Năm đầu tiên được giữ lại làm mốc; các năm sau thể hiện mức tăng/giảm so với năm liền trước.</div><div class="chartbox growthbox" id="growth"></div><div class="chart-actions">
+<button type="button" class="btn-mini" onclick="CDRCharts.exportPNG('growth','tang_truong_sv_theo_nam')">⬇ Xuất PNG</button>
+<button type="button" class="btn-mini" onclick="CDRCharts.exportSVG('growth','tang_truong_sv_theo_nam')">⬇ Xuất SVG</button>
+</div></div>
+<div class="card" style="grid-column:1/-1"><h3>Kết quả đạt/chưa đạt theo năm</h3><div class="chartbox" style="height:350px" id="resultYear"></div><div class="chart-actions">
+<button type="button" class="btn-mini" onclick="CDRCharts.exportPNG('resultYear','ket_qua_dat_chua_dat_theo_nam')">⬇ Xuất PNG</button>
+<button type="button" class="btn-mini" onclick="CDRCharts.exportSVG('resultYear','ket_qua_dat_chua_dat_theo_nam')">⬇ Xuất SVG</button>
+</div></div>
 </div>
-<div class="card" style="margin-top:15px"><h3>Bảng tổng hợp theo năm</h3><div class="tablewrap"><table class="table"><tr><th>Năm</th><th>Đợt thi</th><th>Lượt thi</th><th>SV duy nhất</th><th>Đạt</th><th>Chưa đạt</th><th>Tỷ lệ đạt</th><th>Tăng trưởng SV</th><th>Biến động tỷ lệ đạt</th></tr>
+<div class="card" style="margin-top:15px"><h3>Bảng tổng hợp theo năm</h3><div class="tablewrap"><table class="table"><tr><th>Năm</th><th>Đợt thi</th><th>Lượt thi</th><th>SV duy nhất</th><th>Đạt</th><th>Chưa đạt</th><th>Tỷ lệ đạt<div class="note-calc">Tỷ lệ đạt = SV duy nhất đạt CĐR ÷ SV duy nhất × 100.</div></th><th>Tăng trưởng SV<div class="note-calc">= (SV duy nhất năm nay − SV duy nhất năm trước) ÷ SV duy nhất năm trước × 100.</div></th><th>Biến động tỷ lệ đạt<div class="note-calc">= Tỷ lệ đạt năm nay − Tỷ lệ đạt năm trước, tính theo điểm phần trăm.</div></th></tr>
 {% for x in rows %}<tr><td><b>{{x.year}}</b></td><td>{{x.rounds}}</td><td>{{x.attempts}}</td><td>{{x.students}}</td><td>{{x.achieved}}</td><td>{{x.not}}</td><td><b>{{'%.2f'|format(x.rate)}}%</b></td>
 <td>{% if x.growth_students is none %}—{% elif x.growth_students>=0 %}<span class="up">+{{'%.2f'|format(x.growth_students)}}%</span>{% else %}<span class="down">{{'%.2f'|format(x.growth_students)}}%</span>{% endif %}</td>
 <td>{% if x.growth_rate_pp is none %}—{% elif x.growth_rate_pp>=0 %}<span class="up">+{{'%.2f'|format(x.growth_rate_pp)}} điểm %</span>{% else %}<span class="down">{{'%.2f'|format(x.growth_rate_pp)}} điểm %</span>{% endif %}</td></tr>{% endfor %}

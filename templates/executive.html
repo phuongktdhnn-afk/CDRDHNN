@@ -1,10 +1,30 @@
 {% extends 'base.html' %}{% block content %}
 <div class="pagehead"><div><h1>Điều hành</h1><p>Trang tổng hợp nhanh phục vụ theo dõi xu hướng và ra quyết định.</p></div></div>
-<div class="two"><div class="card"><h3>Quy mô hiện tại</h3><div class="bigmetric">{{'{:,}'.format(d.unique).replace(',','.')}}</div><div class="muted">sinh viên duy nhất trong dữ liệu</div><p><b>{{'{:,}'.format(d.rounds).replace(',','.')}}</b> đợt thi · <b>{{'{:,}'.format(d.total).replace(',','.')}}</b> lượt thi</p></div>
-<div class="card"><h3>Kết quả</h3><div class="bigmetric">{{'%.2f'|format(d.rate)}}%</div><div class="muted">tỷ lệ đạt CĐR</div><p>Đạt: <b>{{'{:,}'.format(d.achieved).replace(',','.')}}</b> · Chưa đạt: <b>{{'{:,}'.format(d.not_achieved).replace(',','.')}}</b></p></div></div>
-<div class="grid"><div class="card"><h3>Xu hướng số sinh viên</h3><div class="chartbox" id="eg"></div></div><div class="card"><h3>Xu hướng tỷ lệ đạt</h3><div class="chartbox" id="er"></div></div></div>
+<div class="two">
+<div class="card"><h3>Quy mô hiện tại</h3><div class="bigmetric">{{'{:,}'.format(d.unique).replace(',','.')}}</div><div class="muted">sinh viên duy nhất trong dữ liệu</div><p><b>{{'{:,}'.format(d.rounds).replace(',','.')}}</b> đợt thi · <b>{{'{:,}'.format(d.total).replace(',','.')}}</b> lượt thi</p></div>
+<div class="card"><h3>Kết quả</h3><div class="bigmetric">{{'%.2f'|format(d.rate)}}%</div><div class="muted"><b>Tỷ lệ đạt</b><div class="note-calc">Tính = số SV duy nhất đạt CĐR ÷ tổng số SV duy nhất × 100.</div></div><p>Đạt: <b>{{'{:,}'.format(d.achieved).replace(',','.')}}</b> · Chưa đạt: <b>{{'{:,}'.format(d.not_achieved).replace(',','.')}}</b></p></div>
+</div>
+<div class="grid">
+<div class="card"><h3>Xu hướng số sinh viên</h3><div class="desc">Số sinh viên duy nhất theo từng năm.</div><div class="chartbox" id="eg"></div><div class="chart-actions">
+<button type="button" class="btn-mini" onclick="CDRCharts.exportPNG('eg','xu_huong_so_sinh_vien')">⬇ Xuất PNG</button>
+<button type="button" class="btn-mini" onclick="CDRCharts.exportSVG('eg','xu_huong_so_sinh_vien')">⬇ Xuất SVG</button>
+</div></div>
+<div class="card"><h3>Xu hướng tỷ lệ đạt</h3><div class="desc">Tỷ lệ đạt CĐR theo từng năm.</div><div class="chartbox" id="er"></div><div class="chart-actions">
+<button type="button" class="btn-mini" onclick="CDRCharts.exportPNG('er','xu_huong_ty_le_dat')">⬇ Xuất PNG</button>
+<button type="button" class="btn-mini" onclick="CDRCharts.exportSVG('er','xu_huong_ty_le_dat')">⬇ Xuất SVG</button>
+</div></div>
+</div>
+<div class="card" style="margin-top:15px"><h3>Biến động tỷ lệ đạt theo năm</h3>
+<div class="note-calc"><b>Cách tính:</b> Biến động tỷ lệ đạt = Tỷ lệ đạt năm nay − Tỷ lệ đạt năm trước, tính theo <b>điểm phần trăm</b>. Năm đầu tiên là mốc so sánh nên hiển thị “—”.</div>
+<div class="tablewrap" style="margin-top:10px"><table class="table"><tr><th>Năm</th><th>Tỷ lệ đạt</th><th>Biến động tỷ lệ đạt</th><th>SV duy nhất</th><th>Tăng trưởng SV</th></tr>
+{% for x in years %}<tr><td><b>{{x.year}}</b></td><td><b>{{'%.2f'|format(x.rate)}}%</b></td>
+<td>{% if x.growth_rate_pp is none %}—{% elif x.growth_rate_pp>=0 %}<span class="up">+{{'%.2f'|format(x.growth_rate_pp)}} điểm %</span>{% else %}<span class="down">{{'%.2f'|format(x.growth_rate_pp)}} điểm %</span>{% endif %}</td>
+<td>{{'{:,}'.format(x.students).replace(',','.')}}</td>
+<td>{% if x.growth_students is none %}—{% elif x.growth_students>=0 %}<span class="up">+{{'%.2f'|format(x.growth_students)}}%</span>{% else %}<span class="down">{{'%.2f'|format(x.growth_students)}}%</span>{% endif %}</td></tr>{% endfor %}
+</table></div></div>
 <div class="card" style="margin-top:15px"><h3>Trường cần chú ý</h3><div class="tablewrap"><table class="table"><tr><th>Trường</th><th>SV</th><th>Đạt</th><th>Chưa đạt</th><th>Tỷ lệ đạt</th></tr>
 {% for x in schools %}<tr><td><span class="schooldot" style="background:{{x.color}}"></span>{{x.school}}</td><td>{{x.students}}</td><td>{{x.achieved}}</td><td>{{x.not_}}</td><td><b>{{'%.2f'|format(x.rate)}}%</b></td></tr>{% endfor %}
 </table></div></div>
+{% if user.role=='admin' %}<div class="data-actions"><a class="btn" href="{{url_for('export_csv')}}">⬇ Xuất CSV dữ liệu</a><a class="btn light" href="{{url_for('export_xlsx')}}">⬇ Xuất Excel dữ liệu</a></div>{% endif %}
 <script>const Y={{years|tojson}};CDRCharts.line('eg',Y,{value:d=>d.students,x:d=>d.year});CDRCharts.line('er',Y,{value:d=>d.rate,x:d=>d.year,max:100,percent:true});</script>
 {% endblock %}

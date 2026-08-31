@@ -1,0 +1,8 @@
+V5.3 – GIAO DIỆN, GIẢI THÍCH CÁCH TÍNH VÀ XUẤT DỮ LIỆU
+- Tăng kích thước font trong các biểu đồ của Tổng quan và Điều hành.
+- Tăng kích thước số liệu trực tiếp trên biểu đồ.
+- Tăng trưởng SV theo năm hiển thị đầy đủ chuỗi năm và có giải thích cách tính dưới tiêu đề cột.
+- Bổ sung giải thích Tỷ lệ đạt và Biến động tỷ lệ đạt trên trang phân tích theo năm.
+- Bổ sung nút xuất PNG/SVG cho các biểu đồ.
+- Bổ sung xuất CSV và Excel dữ liệu cho tài khoản quản trị; quyền viewer không được xuất dữ liệu.
+- Xuất dữ liệu có thể giữ các bộ lọc năm/khóa/trường/đợt/kết quả từ trang Tổng quan.

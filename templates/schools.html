@@ -1,6 +1,9 @@
 {% extends 'base.html' %}{% block content %}
 <div class="pagehead"><div><h1>Phân tích theo trường</h1><p>Mỗi trường có màu riêng; số lượng và tỷ lệ đạt được tính từ dữ liệu thực.</p></div></div>
-<div class="card"><h3>Tỷ lệ đạt theo trường</h3><div class="chartbox tall" id="schoolPageChart"></div></div>
+<div class="card"><h3>Tỷ lệ đạt theo trường</h3><div class="chartbox tall" id="schoolPageChart"></div><div class="chart-actions">
+<button type="button" class="btn-mini" onclick="CDRCharts.exportPNG('schoolPageChart','ty_le_dat_theo_truong')">⬇ Xuất PNG</button>
+<button type="button" class="btn-mini" onclick="CDRCharts.exportSVG('schoolPageChart','ty_le_dat_theo_truong')">⬇ Xuất SVG</button>
+</div></div>
 <div class="card" style="margin-top:15px"><h3>Bảng kết quả theo trường</h3><div class="tablewrap"><table class="table"><tr><th>Trường</th><th>Đợt thi</th><th>Lượt thi</th><th>SV duy nhất</th><th>Đạt</th><th>Chưa đạt</th><th>Tỷ lệ đạt</th></tr>
 {% for x in rows %}<tr><td><span class="schooldot" style="background:{{x.color}}"></span><b>{{x.school}}</b></td><td>{{x.rounds}}</td><td>{{x.attempts}}</td><td>{{x.students}}</td><td>{{x.achieved}}</td><td>{{x.not_}}</td><td><b>{{'%.2f'|format(x.rate)}}%</b></td></tr>{% endfor %}
 </table></div></div>
