@@ -1,0 +1,5 @@
+V5.6 - Fix hiển thị lịch sử đăng nhập
+
+- Sửa templates/admin.html: đưa khối “Lịch sử đăng nhập” vào đúng trong block content của Jinja.
+- Tài khoản admin truy cập /admin sẽ nhìn thấy bảng lịch sử đăng nhập.
+- Giữ nguyên ghi log đăng nhập thành công/thất bại, thời gian, IP và user-agent.
