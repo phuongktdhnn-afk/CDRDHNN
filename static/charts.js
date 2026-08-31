@@ -60,25 +60,58 @@
 
   window.CDRCharts={
     bar:function(id,data,opts={}){
-      const el=document.getElementById(id); const svg=svgRoot(el); if(!svg)return;
-      const W=900,H=310,L=65,R=20,T=18,B=55;
+      const el=document.getElementById(id); const svg=svgRoot(el,Math.max(900,data.length*125),340); if(!svg)return;
+      const W=Math.max(900,data.length*125),H=340,L=65,R=25,T=22,B=60;
       const width=W-L-R,height=H-T-B;
-      const vals=data.map(d=>Number(opts.value?opts.value(d):d.value||0));
-      const max=Math.max(1,opts.max||Math.max(...vals)*1.15);
+      const vals=data.map(d=>opts.value?opts.value(d):d.value);
+      const numeric=vals.filter(v=>v!=null && Number.isFinite(Number(v))).map(Number);
+      const max=Math.max(1,opts.max||Math.max(...numeric,0)*1.15);
       grid(svg,L,T,width,height,max);
       const gap=width/Math.max(1,data.length), bw=Math.min(72,gap*.62);
       data.forEach((d,i)=>{
-        const v=vals[i], bh=v/max*height, x=L+gap*i+(gap-bw)/2, y=T+height-bh;
+        const raw=vals[i], isNull=raw==null || !Number.isFinite(Number(raw));
+        const v=isNull?0:Number(raw), bh=isNull?0:v/max*height, x=L+gap*i+(gap-bw)/2, y=T+height-bh;
         const color=opts.color?opts.color(d,i):'#2475c9';
-        const r=rect(svg,x,y,bw,bh,{rx:5,fill:color});
-        addHover(el,r,`${esc(opts.label?opts.label(d):d.label||'')}: <b>${fmt(v)}</b>${opts.extra?'<br>'+opts.extra(d,i):''}`);
-        text(svg,x+bw/2,y-7,fmt(v),{'text-anchor':'middle','font-size':11,'font-weight':700,'fill':'#183b66'});
-        text(svg,x+bw/2,H-28,String(opts.x?opts.x(d):d.label||''),{'text-anchor':'middle','font-size':11,'fill':'#52677d'});
+        if(!isNull){
+          const r=rect(svg,x,y,bw,bh,{rx:5,fill:color});
+          addHover(el,r,`${esc(opts.label?opts.label(d):d.label||'')}: <b>${fmt(v)}</b>${opts.extra?'<br>'+opts.extra(d,i):''}`);
+          text(svg,x+bw/2,y-7,fmt(v),{'text-anchor':'middle','font-size':12,'font-weight':700,'fill':'#183b66'});
+        }else{
+          text(svg,x+bw/2,T+height/2,opts.nullLabel||'—',{'text-anchor':'middle','font-size':15,'font-weight':700,'fill':'#94a3b8'});
+        }
+        text(svg,x+bw/2,H-28,String(opts.x?opts.x(d):d.label||''),{'text-anchor':'middle','font-size':13,'font-weight':600,'fill':'#52677d'});
+      });
+    },
+    horizontalBar:function(id,data,opts={}){
+      const el=document.getElementById(id); if(!el)return;
+      const W=1200, rowH=38, H=Math.max(470,data.length*rowH+55), L=285, R=120, T=20, B=20;
+      el.innerHTML='';
+      const svg=document.createElementNS(NS,'svg');
+      svg.setAttribute('viewBox',`0 0 ${W} ${H}`);
+      svg.setAttribute('width',W); svg.setAttribute('height',H);
+      svg.setAttribute('role','img'); el.appendChild(svg);
+      const vals=data.map(d=>Number(opts.value?opts.value(d):d.value||0));
+      const max=Math.max(1,opts.max||Math.max(...vals,0)*1.12);
+      const barW=W-L-R;
+      // grid and scale
+      for(let i=0;i<=5;i++){
+        const x=L+barW*i/5;
+        line(svg,x,T,x,H-B,{'stroke':'#e7edf4','stroke-width':1});
+        text(svg,x,H-2,fmt(Math.round(max*i/5)),{'text-anchor':'middle','font-size':12,'fill':'#718096'});
+      }
+      data.forEach((d,i)=>{
+        const y=T+i*rowH;
+        const v=vals[i], bw=(v/max)*barW;
+        const label=opts.label?opts.label(d):d.label||'';
+        text(svg,L-14,y+20, label,{'text-anchor':'end','font-size':13,'font-weight':600,'fill':'#52677d'});
+        const r=rect(svg,L,y+6,Math.max(2,bw),24,{rx:5,fill:opts.color?opts.color(d,i):'#2475c9'});
+        addHover(el,r,`${esc(label)}: <b>${fmt(v)}</b>${opts.extra?'<br>'+opts.extra(d,i):''}`);
+        text(svg,L+bw+10,y+23,fmt(v),{'font-size':13,'font-weight':750,'fill':'#183b66'});
       });
     },
     groupedBar:function(id,data,series,opts={}){
-      const el=document.getElementById(id); const svg=svgRoot(el,1000,340); if(!svg)return;
-      const W=1000,H=340,L=65,R=25,T=22,B=60,width=W-L-R,height=H-T-B;
+      const el=document.getElementById(id); const svg=svgRoot(el,Math.max(1000,data.length*120),360); if(!svg)return;
+      const W=Math.max(1000,data.length*120),H=360,L=65,R=25,T=22,B=65,width=W-L-R,height=H-T-B;
       const all=[]; data.forEach(d=>series.forEach(s=>all.push(Number(s.value(d)||0))));
       const max=Math.max(1,opts.max||Math.max(...all)*1.15); grid(svg,L,T,width,height,max);
       const gap=width/Math.max(1,data.length), bw=Math.min(58,(gap*.68)/series.length);
@@ -88,11 +121,11 @@
           const v=Number(s.value(d)||0),bh=v/max*height,x=start+j*bw,y=T+height-bh;
           const r=rect(svg,x,y,bw-3,bh,{rx:4,fill:s.color||'#2475c9'});
           addHover(el,r,`${esc(s.label)} – ${esc(opts.x?opts.x(d):d.label||'')}: <b>${fmt(v)}</b>${s.percent?` (${Number(s.percent(d)).toFixed(2)}%)`:''}`);
-          text(svg,x+(bw-3)/2,y-5,fmt(v),{'text-anchor':'middle','font-size':10,'font-weight':700,'fill':'#183b66'});
+          text(svg,x+(bw-3)/2,y-5,fmt(v),{'text-anchor':'middle','font-size':12,'font-weight':700,'fill':'#183b66'});
         });
-        text(svg,L+gap*i+gap/2,H-30,String(opts.x?opts.x(d):d.label||''),{'text-anchor':'middle','font-size':11,'fill':'#52677d'});
+        text(svg,L+gap*i+gap/2,H-30,String(opts.x?opts.x(d):d.label||''),{'text-anchor':'middle','font-size':13,'font-weight':600,'fill':'#52677d'});
       });
-      const lx=L,ly=H-8; series.forEach((s,i)=>{rect(svg,lx+i*145,ly-10,10,10,{rx:2,fill:s.color||'#2475c9'});text(svg,lx+15+i*145,ly,s.label,{'font-size':11,'fill':'#52677d'});});
+      const lx=L,ly=H-8; series.forEach((s,i)=>{rect(svg,lx+i*145,ly-10,10,10,{rx:2,fill:s.color||'#2475c9'});text(svg,lx+15+i*145,ly,s.label,{'font-size':13,'font-weight':600,'fill':'#52677d'});});
     },
     line:function(id,data,opts={}){
       const el=document.getElementById(id); const svg=svgRoot(el,900,310); if(!svg)return;
@@ -106,8 +139,8 @@
       pts.forEach((p,i)=>{
         const c=document.createElementNS(NS,'circle'); c.setAttribute('cx',p[0]);c.setAttribute('cy',p[1]);c.setAttribute('r',5);c.setAttribute('fill',opts.color||'#2475c9');svg.appendChild(c);
         addHover(el,c,`${esc(opts.x?opts.x(data[i]):data[i].label||'')}: <b>${opts.percent?pct(vals[i]):fmt(vals[i])}</b>`);
-        text(svg,p[0],p[1]-10,opts.percent?pct(vals[i]):fmt(vals[i]),{'text-anchor':'middle','font-size':10,'font-weight':700,'fill':'#183b66'});
-        text(svg,p[0],H-28,String(opts.x?opts.x(data[i]):data[i].label||''),{'text-anchor':'middle','font-size':11,'fill':'#52677d'});
+        text(svg,p[0],p[1]-10,opts.percent?pct(vals[i]):fmt(vals[i]),{'text-anchor':'middle','font-size':12,'font-weight':700,'fill':'#183b66'});
+        text(svg,p[0],H-28,String(opts.x?opts.x(data[i]):data[i].label||''),{'text-anchor':'middle','font-size':13,'font-weight':600,'fill':'#52677d'});
       });
     },
     donut:function(id,data,opts={}){

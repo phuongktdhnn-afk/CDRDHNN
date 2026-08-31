@@ -1,0 +1,36 @@
+V5.2 – SỬA FONT, TĂNG TRƯỞNG VÀ PHÂN TÍCH ĐỢT THI
+
+1. Giao diện
+- Tăng font chữ tiêu đề, mô tả, KPI, bộ lọc, menu và bảng.
+- Tăng chiều cao/vùng hiển thị biểu đồ, tối ưu cho màn hình ngang.
+- Giữ nguyên xác thực và phân quyền; không thay đổi tài khoản ĐHNN123.
+
+2. Tăng trưởng số sinh viên theo năm
+- Giữ đủ tất cả các năm trên biểu đồ, không còn dùng Y.slice(1).
+- Năm đầu tiên vẫn hiển thị trên trục năm và được đánh dấu “—”/“Năm đầu tiên trong chuỗi dữ liệu”, không bị coi là tăng trưởng 0%.
+- Các năm tiếp theo tính theo công thức: (SV duy nhất năm nay - SV duy nhất năm trước) / SV duy nhất năm trước × 100.
+- Dữ liệu hiện có trong CSDL:
+  2022: 6.275 SV duy nhất; tăng trưởng: —
+  2023: 5.289 SV duy nhất; tăng trưởng: -15,71%
+  2024: 5.608 SV duy nhất; tăng trưởng: +6,03%
+  2025: 2.857 SV duy nhất; tăng trưởng: -49,05%
+
+3. Phân tích theo đợt thi
+- Thay biểu đồ cột đứng bằng biểu đồ thanh ngang để tên đợt thi dài không chồng lên nhau.
+- Hiển thị trực tiếp SV duy nhất; tooltip có Lượt thi, SV duy nhất, chênh lệch, Đạt và tỷ lệ đạt.
+- Bổ sung cột Chênh lệch = Lượt thi - SV duy nhất để kiểm tra chất lượng dữ liệu.
+- Quy ước giữ nguyên:
+  Lượt thi = COUNT(*) bản ghi trong đợt.
+  SV duy nhất = COUNT(DISTINCT ma_sv) trong đợt.
+
+4. Kiểm tra dữ liệu hiện có
+- Tổng dữ liệu: 26.779 bản ghi.
+- Có 28 nhóm Năm–Đợt thi.
+- Chỉ 6 nhóm có chênh lệch Lượt thi > SV duy nhất:
+  2022 – 02&03/4/2022: 1
+  2022 – 04/06/2022: 11
+  2022 – 08/05/2022: 2
+  2022 – 16/04/2022: 1
+  2022 – 18/12/2022: 1
+  2024 – 20&27/10/2024: 1
+- Các chênh lệch này xuất hiện vì cùng mã SV có nhiều bản ghi trong cùng đợt; không tự động xóa/gộp để tránh làm sai dữ liệu gốc.

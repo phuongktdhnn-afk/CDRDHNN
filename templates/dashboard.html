@@ -37,7 +37,12 @@ CDRCharts.groupedBar('yearChart',Y,[
 ],{x:d=>d.year});
 CDRCharts.donut('resultChart',R.map(x=>({label:x.result,value:x.n,color:x.color})));
 CDRCharts.bar('schoolChart',S,{value:d=>d.rate,color:(d)=>d.color,x:d=>d.school,extra:d=>`SV: ${d.students.toLocaleString('vi-VN')} • Đạt: ${d.achieved.toLocaleString('vi-VN')}`});
-CDRCharts.bar('growthChart',Y.slice(1).map(d=>({label:d.year,value:d.growth_students||0})),{value:d=>d.value,color:d=>d.value>=0?'#16a34a':'#dc2626',extra:d=>`So với năm trước: ${Number(d.value).toFixed(2)}%`});
+CDRCharts.bar('growthChart',Y.map(d=>({label:d.year,value:d.growth_students})),{
+ value:d=>d.value,
+ color:d=>Number(d.value||0)>=0?'#16a34a':'#dc2626',
+ extra:d=>d.value==null?'Năm đầu tiên trong chuỗi dữ liệu':`So với năm trước: ${Number(d.value).toFixed(2)}%`,
+ nullLabel:'—'
+});
 CDRCharts.groupedBar('annualResultChart',Y,[
  {label:'Đạt',value:d=>d.achieved,color:'#16a34a',percent:d=>d.rate},
  {label:'Chưa đạt',value:d=>d.not,color:'#dc2626',percent:d=>100-d.rate}
