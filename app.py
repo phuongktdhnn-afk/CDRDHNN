@@ -72,6 +72,7 @@ def init_db():
         else: c.execute('INSERT INTO users(username,password_hash,role,school,active,must_change_password) VALUES(?,?,?,?,1,1)',(BGH_USERNAME,generate_password_hash(BGH_PASSWORD),'viewer',None))
     else: c.execute("UPDATE users SET role='viewer',school=NULL,active=1 WHERE username=?",(BGH_USERNAME,))
     c.execute('DELETE FROM users WHERE username=? AND username<>?',(BGH_LEGACY_USERNAME,BGH_USERNAME))
+    c.execute("UPDATE users SET must_change_password=0 WHERE role<>'admin'")
     for s in SCHOOLS:
         u='school_'+s.lower().replace('&','and').replace(' ','_')
         if not c.execute('SELECT 1 FROM users WHERE username=?',(u,)).fetchone(): c.execute('INSERT INTO users(username,password_hash,role,school) VALUES(?,?,?,?)',(u,generate_password_hash(PASS_DEFAULT),'school',s))
@@ -166,6 +167,19 @@ def school_data(u,args=None):
       COUNT(DISTINCT dot_thi) rounds FROM exam_records{W} GROUP BY truong ORDER BY students DESC''',p).fetchall(); c.close()
     return [dict(r,not_=r['students']-r['achieved'],rate=pct(r['achieved'],r['students']),color=SCHOOL_COLORS.get(r['school'],'#64748b')) for r in rows]
 
+def school_cohort_data(u,args=None):
+    W,p=filter_parts(u,args); c=db()
+    rows=c.execute(f'''SELECT truong school, COALESCE(NULLIF(khoa,''), 'Chưa xác định') cohort,
+      COUNT(*) attempts, COUNT(DISTINCT ma_sv) students,
+      COUNT(DISTINCT CASE WHEN ket_qua IN ('Bậc 3','Bậc 4','Bậc 5') THEN ma_sv END) achieved
+      FROM exam_records{W} GROUP BY truong, COALESCE(NULLIF(khoa,''), 'Chưa xác định')
+      ORDER BY truong, cohort''',p).fetchall(); c.close()
+    out=[]
+    for r in rows:
+        d=dict(r); d['not_achieved']=max(d['students']-d['achieved'],0); d['rate']=pct(d['achieved'],d['students'])
+        out.append(d)
+    return out
+
 def round_data(u,args=None):
     W,p=filter_parts(u,args); c=db()
     rows=c.execute(f'''SELECT nam year,dot_thi round,COUNT(*) attempts,COUNT(DISTINCT ma_sv) students,
@@ -203,7 +217,7 @@ def login():
         c.commit(); c.close()
         if ok:
             session.clear(); session['uid']=u['id']
-            if u['must_change_password']: return redirect(url_for('change_password'))
+            if u['role']=='admin' and u['must_change_password']: return redirect(url_for('change_password'))
             return redirect(url_for('index'))
         flash('Tài khoản hoặc mật khẩu không đúng.','error')
     return render_template('login.html')
@@ -212,7 +226,7 @@ def login():
 def logout(): session.clear(); return redirect(url_for('login'))
 
 @app.route('/change-password',methods=['GET','POST'])
-@login_required
+@admin_required
 def change_password():
     if request.method=='POST':
         old=request.form.get('old',''); new=request.form.get('new','')
@@ -225,7 +239,7 @@ def change_password():
 @app.route('/')
 @login_required
 def index():
-    u=current_user(); return render_template('dashboard.html',d=aggregate(u),years=years_data(u),schools=school_data(u),results=result_data(u),opts=filter_options(u),filters={k:request.args.get(k,'') for k in ['year','cohort','school','round','result']})
+    u=current_user(); return render_template('dashboard.html',d=aggregate(u),years=years_data(u),schools=school_data(u),results=result_data(u),school_cohorts=school_cohort_data(u),opts=filter_options(u),filters={k:request.args.get(k,'') for k in ['year','cohort','school','round','result']})
 
 @app.route('/executive')
 @login_required

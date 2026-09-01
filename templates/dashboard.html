@@ -2,10 +2,10 @@
 <div class="pagehead"><div><h1>Tổng quan kết quả thi CĐR</h1><p>Số liệu thực từ cơ sở dữ liệu; tỷ lệ luôn hiển thị 2 chữ số thập phân.</p></div></div>
 <form class="filters">
 <select name="year"><option value="">Tất cả năm</option>{% for x in opts.nam %}<option value="{{x}}" {{'selected' if filters.year==x|string}}>{{x}}</option>{% endfor %}</select>
-<select name="cohort"><option value="">Tất cả khóa</option>{% for x in opts.khoa %}<option value="{{x}}">{{x}}</option>{% endfor %}</select>
-{% if user.role=='admin' %}<select name="school"><option value="">Tất cả trường</option>{% for x in opts.truong %}<option value="{{x}}">{{x}}</option>{% endfor %}</select>{% endif %}
-<select name="round"><option value="">Tất cả đợt thi</option>{% for x in opts.dot_thi %}<option value="{{x}}">{{x}}</option>{% endfor %}</select>
-<select name="result"><option value="">Tất cả kết quả</option>{% for x in opts.ket_qua %}<option value="{{x}}">{{x}}</option>{% endfor %}</select>
+<select name="cohort"><option value="">Tất cả khóa</option>{% for x in opts.khoa %}<option value="{{x}}" {{'selected' if filters.cohort==x|string}}>{{x}}</option>{% endfor %}</select>
+{% if user.role in ('admin','viewer') %}<select name="school"><option value="">Tất cả trường</option>{% for x in opts.truong %}<option value="{{x}}" {{'selected' if filters.school==x|string}}>{{x}}</option>{% endfor %}</select>{% endif %}
+<select name="round"><option value="">Tất cả đợt thi</option>{% for x in opts.dot_thi %}<option value="{{x}}" {{'selected' if filters.round==x|string}}>{{x}}</option>{% endfor %}</select>
+<select name="result"><option value="">Tất cả kết quả</option>{% for x in opts.ket_qua %}<option value="{{x}}" {{'selected' if filters.result==x|string}}>{{x}}</option>{% endfor %}</select>
 <button class="btn">Lọc</button><a class="btn light" href="{{url_for('index')}}">Xóa lọc</a></form>{% if user.role=='admin' %}<div class="data-actions"><a class="btn" href="{{url_for('export_csv',year=filters.year,cohort=filters.cohort,school=filters.school,round=filters.round,result=filters.result)}}">⬇ Xuất CSV dữ liệu</a><a class="btn light" href="{{url_for('export_xlsx',year=filters.year,cohort=filters.cohort,school=filters.school,round=filters.round,result=filters.result)}}">⬇ Xuất Excel dữ liệu</a></div>{% endif %}
 
 <div class="kpis">
@@ -35,6 +35,14 @@
 <button type="button" class="btn-mini" onclick="CDRCharts.exportSVG('growthChart','tang_truong_sv_theo_nam')">⬇ Xuất SVG</button>
 </div></div>
 <div class="card" style="grid-column:1/-1"><h3>Kết quả theo năm</h3><div class="desc">Đạt, chưa đạt, số đợt thi và tỷ lệ đạt; số lượng hiển thị trực tiếp trên biểu đồ.</div><div class="chartbox" style="height:350px" id="annualResultChart"></div></div>
+
+<div class="card" style="grid-column:1/-1">
+<h3>Chi tiết sinh viên theo trường &amp; khóa tuyển sinh</h3>
+<div class="desc">Dùng bộ lọc <b>Năm</b> và <b>Trường</b> để biết số SV đã thi, thuộc khóa tuyển sinh nào và kết quả đạt/chưa đạt. <b>SV</b> là số mã SV duy nhất; tỷ lệ đạt tính trên SV duy nhất.</div>
+<div class="tablewrap"><table class="table"><tr><th>Trường</th><th>Khóa tuyển sinh</th><th>Lượt thi</th><th>SV duy nhất</th><th>Đạt</th><th>Chưa đạt</th><th>Tỷ lệ đạt</th></tr>
+{% for x in school_cohorts %}<tr><td><b>{{x.school}}</b></td><td>{{x.cohort}}</td><td>{{'{:,}'.format(x.attempts).replace(',','.')}}</td><td>{{'{:,}'.format(x.students).replace(',','.')}}</td><td>{{'{:,}'.format(x.achieved).replace(',','.')}}</td><td>{{'{:,}'.format(x.not_achieved).replace(',','.')}}</td><td><b>{{'%.2f'|format(x.rate)}}%</b></td></tr>{% else %}<tr><td colspan="7" class="muted">Không có dữ liệu phù hợp với bộ lọc.</td></tr>{% endfor %}
+</table></div></div>
+
 <div class="card" style="grid-column:1/-1"><h3>Bảng tổng hợp theo năm</h3>
 <div class="tablewrap"><table class="table"><tr><th>Năm</th><th>Đợt thi</th><th>Lượt thi</th><th>SV duy nhất</th><th>Đạt</th><th>Chưa đạt</th><th>Tỷ lệ đạt</th><th>Tăng trưởng SV<div class="note-calc">Tính = (SV duy nhất năm nay − SV duy nhất năm trước) ÷ SV duy nhất năm trước × 100.</div></th></tr>
 {% for x in years %}<tr><td><b>{{x.year}}</b></td><td>{{x.rounds}}</td><td>{{x.attempts}}</td><td>{{x.students}}</td><td>{{x.achieved}}</td><td>{{x.not}}</td><td><b>{{'%.2f'|format(x.rate)}}%</b></td><td>{% if x.growth_students is none %}—{% elif x.growth_students>=0 %}<span class="up">+{{'%.2f'|format(x.growth_students)}}%</span>{% else %}<span class="down">{{'%.2f'|format(x.growth_students)}}%</span>{% endif %}</td></tr>{% endfor %}
