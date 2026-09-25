@@ -1,41 +1,142 @@
-# Dashboard theo dõi thi CĐR SV TTV ĐHĐN — Web có phân quyền
+# Bản sửa hoàn chỉnh – Dashboard CĐR UFLS
 
-## Chức năng
-- Đăng nhập thật bằng tài khoản + mật khẩu, mật khẩu lưu dạng hash.
-- Quản trị: xem toàn hệ thống, cập nhật Excel, quản lý tài khoản, xuất CSV.
-- Tài khoản trường: chỉ truy vấn được dữ liệu của trường được gán; không có quyền cập nhật Excel hoặc xem trường khác.
-- Dashboard: KPI, lượt thi theo năm/trường/khóa/đợt, cơ cấu kết quả, so sánh tỷ lệ đạt.
-- Cảnh báo: gom lịch sử theo Mã SV; ưu tiên nhóm thi nhiều lần chưa đạt.
-- Người dùng bắt buộc đổi mật khẩu lần đầu.
+## Mục tiêu
+Bản này sửa lỗi đăng nhập "Tài khoản hoặc mật khẩu không đúng" bằng cách:
+- Có `password_hash` trong D1.
+- Hash mật khẩu bằng PBKDF2-SHA256 trên Cloudflare Workers Web Crypto.
+- Có session HttpOnly/Secure trong D1.
+- Có `/api/health`, `/api/login`, `/api/logout`, `/api/me`, `/api/dashboard`, `/api/students`, `/api/care-cases`.
+- Có migration D1.
+- Giao diện đăng nhập + dashboard chạy chung trên một Worker, tránh lỗi CORS do tách frontend/backend.
 
-## Chạy nội bộ
-1. Cài Python 3.10+.
-2. Mở Terminal tại thư mục này.
-3. `pip install -r requirements.txt`
-4. `python app.py`
-5. Mở `http://127.0.0.1:5000`
+Cloudflare hỗ trợ D1 qua Worker binding và PBKDF2 qua Web Crypto. Xem tài liệu chính thức:
+https://developers.cloudflare.com/d1/worker-api/
+https://developers.cloudflare.com/workers/runtime-apis/web-crypto/
+https://developers.cloudflare.com/d1/reference/migrations/
 
-## Tài khoản khởi tạo
-- `admin` — quản trị toàn hệ thống
-- Các tài khoản trường có dạng `school_<ten_truong>`.
-- Mật khẩu ban đầu: `CDRDHNN123`.
-- **Đổi ngay mật khẩu trước khi chia sẻ cho người dùng.**
+## 1. Quan trọng trước khi deploy
 
-## Triển khai trong mạng cơ quan
-Chạy Flask trên một máy chủ nội bộ và bind host `0.0.0.0` (sửa dòng cuối app.py hoặc đặt sau một reverse proxy). Người dùng truy cập bằng IP/tên máy chủ nội bộ. Không mở cổng ra Internet nếu chưa cấu hình HTTPS, firewall và quản trị mật khẩu.
+Mở `wrangler.toml` và thay:
 
-## Cập nhật Excel
-Tài khoản admin → Quản trị dữ liệu → chọn Excel → Cập nhật. File Excel cần giữ cấu trúc header như file nguồn hiện tại, với dòng tiêu đề bảng ở dòng 3.
+`REPLACE_WITH_YOUR_EXISTING_D1_DATABASE_ID`
 
-## Lưu ý bảo mật
-Phân quyền được thực hiện ở phía máy chủ bằng SQL WHERE theo trường, không phải chỉ bằng bộ lọc giao diện. Tuy vậy, đây là bản nền tảng; trước khi đưa lên Internet cần HTTPS, SECRET_KEY riêng, mật khẩu mạnh, sao lưu DB và có thể chuyển SQLite sang PostgreSQL nếu số người dùng tăng.
+bằng **Database ID của D1 hiện tại `cdr-ta-ufl`**.
 
+Không tạo D1 mới nếu muốn giữ dữ liệu hiện tại.
 
-PHÂN QUYỀN BGH TRƯỜNG ĐHNN
-----------------------------
-- Tài khoản: ĐHNN123
-- Mật khẩu ban đầu: CDRDHNN123
-- Vai trò: viewer (chỉ xem tổng hợp toàn hệ thống).
-- Không được cập nhật Excel, không quản trị tài khoản, không xem trang danh sách/hồ sơ sinh viên, không xuất CSV.
-- Bắt buộc đổi mật khẩu lần đầu.
-- Có thể tạo thêm tài khoản viewer riêng cho từng thành viên BGH từ trang Quản trị dữ liệu bằng tài khoản admin.
+## 2. Nếu deploy bằng GitHub + Cloudflare Workers
+
+Repository cần giữ nguyên cấu trúc:
+
+- `src/index.js`
+- `public/index.html`
+- `migrations/0001_auth_and_core.sql`
+- `wrangler.toml`
+
+Sau khi kết nối GitHub với Worker, deploy theo cấu hình Wrangler.
+
+Nếu Worker đã có binding D1 trên Cloudflare Dashboard, kiểm tra binding phải có:
+- Variable name: `DB`
+- Database: `cdr-ta-ufl`
+
+Nếu Cloudflare dashboard đang dùng một tên binding khác, sửa `binding = "DB"` cho đúng tên binding hiện tại.
+
+## 3. Chạy migration trên D1 hiện tại
+
+Nếu dùng Wrangler:
+
+`npx wrangler d1 migrations apply DB --remote`
+
+Migration chỉ bổ sung các bảng/column cần thiết bằng `CREATE TABLE IF NOT EXISTS`; không xóa dữ liệu hiện hữu.
+
+## 4. Tạo tài khoản quản trị
+
+Không đặt mật khẩu mặc định trong mã nguồn.
+
+Trên Cloudflare Worker, tạo một Secret tên:
+
+`SETUP_KEY`
+
+Giá trị là một chuỗi bí mật do bạn tự đặt.
+
+Sau khi deploy, gọi POST:
+
+`/api/setup`
+
+Header:
+
+`x-setup-key: <SETUP_KEY>`
+
+Body ví dụ:
+
+{
+  "username": "admin.cdr",
+  "password": "MAT_KHAU_MOI_TOI_THIEU_10_KY_TU",
+  "full_name": "Quản trị Dashboard CĐR",
+  "email": "",
+  "role_code": "ADMIN"
+}
+
+Có thể thực hiện bằng REST client hoặc Cloudflare dashboard.
+
+Sau khi tạo tài khoản, `/api/setup` vẫn yêu cầu `SETUP_KEY`.
+
+## 5. Kiểm tra nhanh
+
+Mở:
+
+`/api/health`
+
+Kết quả mong đợi dạng:
+
+{
+  "ok": true,
+  "db": true,
+  "counts": {
+    "users": 1,
+    "students": 0,
+    "care_cases": 0
+  }
+}
+
+Nếu `students = 0` thì đó là do D1 hiện chưa có dữ liệu sinh viên; không phải lỗi đăng nhập.
+
+## 6. Tài khoản BGH / DHNN123
+
+Không dùng chung mật khẩu ADMIN.
+
+Tạo một tài khoản riêng:
+
+{
+  "username": "dhhn123",
+  "full_name": "BGH",
+  "role_code": "BGH"
+}
+
+Có thể dùng `DHNN123` nếu đó là quy ước tài khoản của hệ thống hiện tại; username được lưu theo đúng chuỗi bạn nhập.
+
+## 7. Lưu ý về dữ liệu hiện tại
+
+Bản `dashboard.html` cũ trong Library là dashboard chạy trực tiếp trên Excel và không có backend authentication/session. File đó đọc Excel bằng thư viện XLSX phía trình duyệt. Bản sửa này chuyển phần xác thực sang Worker + D1, nên không còn phụ thuộc vào việc JavaScript phía trình duyệt tự kiểm tra mật khẩu.
+
+Nếu D1 hiện tại đã có bảng `users` với dữ liệu cũ, migration không tự xóa. Nếu bảng `users` thiếu `password_hash`, cần đảm bảo migration đã bổ sung column này trước khi tạo tài khoản.
+
+## 8. Sau khi đăng nhập
+
+Dashboard hiển thị:
+- Tổng sinh viên
+- Đã đạt CĐR
+- Chưa đạt
+- Thống kê theo trường
+- Mức cảnh báo
+- Danh sách sinh viên
+- Danh sách cần theo dõi
+
+Các API đều yêu cầu session, trừ `/api/health`, `/api/login` và `/api/setup`.
+
+## 9. Bảo mật
+
+- Mật khẩu không lưu dạng rõ.
+- Session token không lưu trực tiếp trong D1; D1 lưu SHA-256 của token.
+- Cookie session là HttpOnly + Secure + SameSite=Lax.
+- Không đưa `SETUP_KEY` hoặc mật khẩu vào GitHub.

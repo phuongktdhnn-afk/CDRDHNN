@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Dashboard CĐR – UFLS</title>
+<style>
+:root{--nav:#102a43;--blue:#246bce;--bg:#f4f7fb;--card:#fff;--ink:#172b4d;--muted:#6b7c93;--line:#e4eaf1;--good:#16855b;--warn:#b77900;--bad:#c73b4a}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);font-family:Segoe UI,Arial,sans-serif;color:var(--ink)}
+.hidden{display:none!important}.login{min-height:100vh;display:grid;place-items:center;padding:20px}
+.login-card{width:min(430px,100%);background:#fff;border:1px solid var(--line);border-radius:16px;padding:28px;box-shadow:0 12px 35px #102a4318}
+.logo{font-weight:800;color:var(--blue);letter-spacing:.4px}.login h1{font-size:23px;margin:8px 0}.login p{color:var(--muted);font-size:13px}
+label{font-size:12px;font-weight:700;color:var(--muted);display:block;margin:13px 0 6px}
+input,select{width:100%;padding:11px;border:1px solid #ccd6e0;border-radius:8px;background:#fff}
+button{border:1px solid #ccd6e0;background:#fff;border-radius:8px;padding:10px 14px;font-weight:700;cursor:pointer}.primary{background:var(--blue);border-color:var(--blue);color:#fff}.danger{color:#fff;background:var(--bad);border-color:var(--bad)}
+.err{background:#fff0f1;color:#9f2432;border:1px solid #f2c4c9;padding:10px;border-radius:8px;font-size:12px;margin-top:12px}
+.app header{background:linear-gradient(135deg,#102a43,#243b53);color:#fff;padding:18px 28px;display:flex;justify-content:space-between;gap:15px;align-items:center}.app header h1{margin:0;font-size:21px}.app header p{margin:4px 0 0;color:#d9e2ec;font-size:12px}
+main{max-width:1500px;margin:auto;padding:22px}.toolbar,.card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:15px;box-shadow:0 7px 22px #102a4310;margin-bottom:15px}
+.toolbar{display:flex;gap:10px;align-items:end;flex-wrap:wrap}.field{min-width:190px;flex:1}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:15px}.kpi{background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px}.kpi b{font-size:28px;display:block;margin:5px 0}.muted{color:var(--muted);font-size:12px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:15px}.bar{height:18px;background:#e9eef5;border-radius:99px;overflow:hidden}.bar span{display:block;height:100%;background:var(--blue)}
+table{width:100%;border-collapse:collapse;font-size:12px}th,td{padding:9px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap}th{background:#f7f9fc;font-size:11px;color:var(--muted)}.table{overflow:auto;max-height:550px}
+.badge{padding:4px 8px;border-radius:99px;font-size:10px;font-weight:800}.good{background:#e8f6ef;color:#13744f}.high{background:#fdebed;color:#a82e3e}.mid{background:#fff5dc;color:#9a6800}
+@media(max-width:850px){.kpis{grid-template-columns:repeat(2,1fr)}.grid{grid-template-columns:1fr}.app header{align-items:flex-start;flex-direction:column}}
+</style>
+</head>
+<body>
+<section id="login" class="login">
+ <div class="login-card">
+  <div class="logo">UFLS • CĐR</div>
+  <h1>Dashboard theo dõi CĐR</h1>
+  <p>Đăng nhập để xem dữ liệu và điều hành theo phân quyền.</p>
+  <form id="loginForm">
+   <label>Tài khoản</label><input id="username" autocomplete="username" required>
+   <label>Mật khẩu</label><input id="password" type="password" autocomplete="current-password" required>
+   <button class="primary" style="width:100%;margin-top:18px">Đăng nhập</button>
+  </form>
+  <div id="loginErr" class="err hidden"></div>
+ </div>
+</section>
+
+<section id="app" class="app hidden">
+<header>
+ <div><h1>Dashboard theo dõi CĐR sinh viên</h1><p id="who"></p></div>
+ <button id="logout">Đăng xuất</button>
+</header>
+<main>
+ <div class="toolbar">
+  <div class="field"><label>Tìm sinh viên</label><input id="q" placeholder="Mã SV hoặc họ tên"></div>
+  <div class="field"><label>Trường</label><select id="school"><option value="">Tất cả</option></select></div>
+  <button class="primary" id="refresh">Cập nhật</button>
+ </div>
+ <div class="kpis">
+  <div class="kpi"><span class="muted">Tổng sinh viên</span><b id="nStudents">0</b></div>
+  <div class="kpi"><span class="muted">Đã đạt CĐR</span><b id="nAttained">0</b></div>
+  <div class="kpi"><span class="muted">Chưa đạt</span><b id="nUnresolved">0</b></div>
+  <div class="kpi"><span class="muted">Cập nhật</span><b style="font-size:18px" id="updated">—</b></div>
+ </div>
+ <div class="grid">
+  <div class="card"><h3>Thống kê theo trường</h3><div id="schools"></div></div>
+  <div class="card"><h3>Cảnh báo</h3><div id="risks"></div></div>
+ </div>
+ <div class="card"><h3>Danh sách sinh viên</h3><div class="muted" style="margin-bottom:10px">Hiển thị tối đa 2.000 dòng theo bộ lọc.</div><div class="table" id="studentTable"></div></div>
+ <div class="card"><h3>Danh sách cần theo dõi</h3><div class="table" id="careTable"></div></div>
+</main>
+</section>
+
+<script>
+const $=s=>document.querySelector(s);
+const fmt=n=>new Intl.NumberFormat('vi-VN').format(Number(n||0));
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+async function api(path,opt={}){
+ const r=await fetch(path,{credentials:'include',...opt});
+ let d={}; try{d=await r.json()}catch{}
+ if(!r.ok) throw new Error(d.error||`HTTP ${r.status}`);
+ return d;
+}
+function badge(x){
+ const c=x==='Đã đạt'?'good':(x==='Rất cao'||x==='Cao'?'high':'mid');
+ return `<span class="badge ${c}">${esc(x||'')}</span>`;
+}
+async function start(){
+ try{
+  const me=await api('/api/me');
+  $('#login').classList.add('hidden');$('#app').classList.remove('hidden');
+  $('#who').textContent=`${me.user.full_name} • ${me.user.role_code}${me.user.school_id?' • '+me.user.school_id:''}`;
+  await load();
+ }catch(e){/* not logged in */}
+}
+async function load(){
+ const d=await api('/api/dashboard');
+ $('#nStudents').textContent=fmt(d.kpi.students);
+ $('#nAttained').textContent=fmt(d.kpi.attained);
+ $('#nUnresolved').textContent=fmt(d.kpi.students-d.kpi.attained);
+ $('#updated').textContent=new Date().toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'});
+ $('#schools').innerHTML=(d.schools||[]).map(x=>{
+   const p=x.total?x.attained/x.total*100:0;
+   return `<div style="margin:12px 0"><div style="display:flex;justify-content:space-between"><b>${esc(x.school_name)}</b><span>${fmt(x.attained)}/${fmt(x.total)} (${p.toFixed(1)}%)</span></div><div class="bar"><span style="width:${p}%"></span></div></div>`
+ }).join('')||'<div class="muted">Chưa có dữ liệu.</div>';
+ $('#risks').innerHTML=(d.risks||[]).map(x=>`<div style="padding:11px 0;border-bottom:1px solid #e4eaf1;display:flex;justify-content:space-between">${badge(x.risk_level)}<b>${fmt(x.total)}</b></div>`).join('')||'<div class="muted">Chưa có dữ liệu.</div>';
+ const schools=[...new Set((d.schools||[]).map(x=>x.school_name))];
+ $('#school').innerHTML='<option value="">Tất cả</option>'+schools.map(x=>`<option>${esc(x)}</option>`).join('');
+ await loadStudents();
+ await loadCare();
+}
+async function loadStudents(){
+ const u=new URL('/api/students',location.origin);
+ if($('#q').value.trim())u.searchParams.set('q',$('#q').value.trim());
+ if($('#school').value)u.searchParams.set('school',$('#school').value);
+ const d=await api(u.pathname+u.search);
+ $('#studentTable').innerHTML=d.rows.length?`<table><thead><tr><th>Mã SV</th><th>Họ tên</th><th>Trường</th><th>Khóa</th><th>Lớp</th><th>CĐR</th><th>Lần thi</th><th>Rủi ro</th></tr></thead><tbody>${d.rows.map(x=>`<tr><td>${esc(x.student_code)}</td><td>${esc(x.full_name)}</td><td>${esc(x.school_name)}</td><td>${esc(x.cohort)}</td><td>${esc(x.class_name)}</td><td>${badge(x.cdr_status)}</td><td>${fmt(x.attempts)}</td><td>${badge(x.risk_level)}</td></tr>`).join('')}</tbody></table>`:'<div class="muted">Không có dữ liệu phù hợp.</div>';
+}
+async function loadCare(){
+ const d=await api('/api/care-cases');
+ $('#careTable').innerHTML=d.rows.length?`<table><thead><tr><th>Mã SV</th><th>Họ tên</th><th>Trường</th><th>Khóa</th><th>Mức rủi ro</th><th>Lý do</th><th>Trạng thái</th></tr></thead><tbody>${d.rows.map(x=>`<tr><td>${esc(x.student_code)}</td><td>${esc(x.full_name)}</td><td>${esc(x.school_name)}</td><td>${esc(x.cohort)}</td><td>${badge(x.risk_level)}</td><td>${esc(x.reason)}</td><td>${esc(x.status)}</td></tr>`).join('')}</tbody></table>`:'<div class="muted">Chưa có trường hợp cần theo dõi.</div>';
+}
+$('#loginForm').onsubmit=async e=>{
+ e.preventDefault();$('#loginErr').classList.add('hidden');
+ try{await api('/api/login',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({username:$('#username').value,password:$('#password').value})});await start();}
+ catch(err){$('#loginErr').textContent=err.message;$('#loginErr').classList.remove('hidden');}
+};
+$('#logout').onclick=async()=>{await api('/api/logout',{method:'POST'});location.reload()};
+$('#refresh').onclick=load;
+$('#school').onchange=loadStudents;
+let timer;$('#q').oninput=()=>{clearTimeout(timer);timer=setTimeout(loadStudents,350)};
+start();
+</script>
+</body></html>
