@@ -1,4 +1,4 @@
-name = "cdrnn"
+name = "cdrtattv"
 main = "src/index.js"
 compatibility_date = "2026-09-24"
 
@@ -8,5 +8,5 @@ binding = "ASSETS"
 
 [[d1_databases]]
 binding = "DB"
-database_name = "cdrnn"
-database_id = "0ed9e5c6-5643-47ed-853b-b6a9f5524792"
+database_name = "cdrtattv"
+database_id = "c3cc87bb-9e88-4405-b14c-3810bffc3bb5"
