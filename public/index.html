@@ -1,128 +1,31 @@
-<!doctype html>
-<html lang="vi">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Dashboard CĐR – UFLS</title>
-<style>
-:root{--nav:#102a43;--blue:#246bce;--bg:#f4f7fb;--card:#fff;--ink:#172b4d;--muted:#6b7c93;--line:#e4eaf1;--good:#16855b;--warn:#b77900;--bad:#c73b4a}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);font-family:Segoe UI,Arial,sans-serif;color:var(--ink)}
-.hidden{display:none!important}.login{min-height:100vh;display:grid;place-items:center;padding:20px}
-.login-card{width:min(430px,100%);background:#fff;border:1px solid var(--line);border-radius:16px;padding:28px;box-shadow:0 12px 35px #102a4318}
-.logo{font-weight:800;color:var(--blue);letter-spacing:.4px}.login h1{font-size:23px;margin:8px 0}.login p{color:var(--muted);font-size:13px}
-label{font-size:12px;font-weight:700;color:var(--muted);display:block;margin:13px 0 6px}
-input,select{width:100%;padding:11px;border:1px solid #ccd6e0;border-radius:8px;background:#fff}
-button{border:1px solid #ccd6e0;background:#fff;border-radius:8px;padding:10px 14px;font-weight:700;cursor:pointer}.primary{background:var(--blue);border-color:var(--blue);color:#fff}.danger{color:#fff;background:var(--bad);border-color:var(--bad)}
-.err{background:#fff0f1;color:#9f2432;border:1px solid #f2c4c9;padding:10px;border-radius:8px;font-size:12px;margin-top:12px}
-.app header{background:linear-gradient(135deg,#102a43,#243b53);color:#fff;padding:18px 28px;display:flex;justify-content:space-between;gap:15px;align-items:center}.app header h1{margin:0;font-size:21px}.app header p{margin:4px 0 0;color:#d9e2ec;font-size:12px}
-main{max-width:1500px;margin:auto;padding:22px}.toolbar,.card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:15px;box-shadow:0 7px 22px #102a4310;margin-bottom:15px}
-.toolbar{display:flex;gap:10px;align-items:end;flex-wrap:wrap}.field{min-width:190px;flex:1}
-.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:15px}.kpi{background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px}.kpi b{font-size:28px;display:block;margin:5px 0}.muted{color:var(--muted);font-size:12px}
-.grid{display:grid;grid-template-columns:1fr 1fr;gap:15px}.bar{height:18px;background:#e9eef5;border-radius:99px;overflow:hidden}.bar span{display:block;height:100%;background:var(--blue)}
-table{width:100%;border-collapse:collapse;font-size:12px}th,td{padding:9px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap}th{background:#f7f9fc;font-size:11px;color:var(--muted)}.table{overflow:auto;max-height:550px}
-.badge{padding:4px 8px;border-radius:99px;font-size:10px;font-weight:800}.good{background:#e8f6ef;color:#13744f}.high{background:#fdebed;color:#a82e3e}.mid{background:#fff5dc;color:#9a6800}
-@media(max-width:850px){.kpis{grid-template-columns:repeat(2,1fr)}.grid{grid-template-columns:1fr}.app header{align-items:flex-start;flex-direction:column}}
-</style>
-</head>
-<body>
-<section id="login" class="login">
- <div class="login-card">
-  <div class="logo">UFLS • CĐR</div>
-  <h1>Dashboard theo dõi CĐR</h1>
-  <p>Đăng nhập để xem dữ liệu và điều hành theo phân quyền.</p>
-  <form id="loginForm">
-   <label>Tài khoản</label><input id="username" autocomplete="username" required>
-   <label>Mật khẩu</label><input id="password" type="password" autocomplete="current-password" required>
-   <button class="primary" style="width:100%;margin-top:18px">Đăng nhập</button>
-  </form>
-  <div id="loginErr" class="err hidden"></div>
- </div>
-</section>
-
-<section id="app" class="app hidden">
-<header>
- <div><h1>Dashboard theo dõi CĐR sinh viên</h1><p id="who"></p></div>
- <button id="logout">Đăng xuất</button>
-</header>
-<main>
- <div class="toolbar">
-  <div class="field"><label>Tìm sinh viên</label><input id="q" placeholder="Mã SV hoặc họ tên"></div>
-  <div class="field"><label>Trường</label><select id="school"><option value="">Tất cả</option></select></div>
-  <button class="primary" id="refresh">Cập nhật</button>
- </div>
- <div class="kpis">
-  <div class="kpi"><span class="muted">Tổng sinh viên</span><b id="nStudents">0</b></div>
-  <div class="kpi"><span class="muted">Đã đạt CĐR</span><b id="nAttained">0</b></div>
-  <div class="kpi"><span class="muted">Chưa đạt</span><b id="nUnresolved">0</b></div>
-  <div class="kpi"><span class="muted">Cập nhật</span><b style="font-size:18px" id="updated">—</b></div>
- </div>
- <div class="grid">
-  <div class="card"><h3>Thống kê theo trường</h3><div id="schools"></div></div>
-  <div class="card"><h3>Cảnh báo</h3><div id="risks"></div></div>
- </div>
- <div class="card"><h3>Danh sách sinh viên</h3><div class="muted" style="margin-bottom:10px">Hiển thị tối đa 2.000 dòng theo bộ lọc.</div><div class="table" id="studentTable"></div></div>
- <div class="card"><h3>Danh sách cần theo dõi</h3><div class="table" id="careTable"></div></div>
-</main>
-</section>
-
+<!doctype html><html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Dashboard CDR – ĐHNN, ĐHĐN</title><style>
+:root{font-family:Arial,Helvetica,sans-serif;color:#172b45;background:#f3f6fa}*{box-sizing:border-box}body{margin:0}.hidden{display:none!important}.login-wrap{min-height:100vh;display:grid;place-items:center;padding:20px}.login-card{width:min(100%,430px);background:#fff;border-radius:18px;padding:36px;box-shadow:0 14px 40px #18345120}.login-card h1{font-size:34px;margin:20px 0}.sub{color:#55708e;margin-bottom:28px}.field{width:100%;padding:13px 14px;border:1px solid #ccd7e5;border-radius:9px;font-size:16px;margin:0 0 16px}.btn{border:0;border-radius:9px;padding:13px 18px;background:#153f6d;color:white;font-size:15px;font-weight:700;cursor:pointer}.btn:disabled{opacity:.6;cursor:wait}.wide{width:100%}.error{color:#b42318;min-height:22px;margin:0 0 12px}.top{background:#153f6d;color:white;padding:18px 24px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}.top h1{font-size:23px;margin:0 0 5px}.top small{opacity:.85}.layout{max-width:1400px;margin:auto;padding:22px}.tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px}.tab{border:1px solid #d3deeb;background:white;color:#23415f;padding:11px 15px;border-radius:9px;cursor:pointer}.tab.active{background:#153f6d;color:#fff}.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin:18px 0}.card,.panel{background:white;border:1px solid #e0e7ef;border-radius:12px;padding:18px}.metric{font-size:30px;font-weight:700;margin-top:8px}.muted{color:#61758b}.panel{display:none}.panel.active{display:block}.table-wrap{overflow:auto}table{border-collapse:collapse;width:100%;margin-top:12px}th,td{text-align:left;padding:10px;border-bottom:1px solid #e6ebf1;white-space:nowrap}th{background:#f5f8fc}.toolbar{display:flex;gap:10px;flex-wrap:wrap}.toolbar input,.toolbar select{padding:10px;border:1px solid #ccd7e5;border-radius:8px}.status{padding:12px;border-radius:8px;background:#eef5fb;margin:12px 0}.adminOnly{}.user-list{white-space:pre-wrap;overflow-wrap:anywhere;background:#f5f8fb;padding:12px;border-radius:8px}.footer{font-size:12px;color:#6a7d91;margin-top:18px}@media(max-width:520px){.login-card{padding:25px}.login-card h1{font-size:28px}.layout{padding:12px}}
+</style></head><body>
+<section id="login" class="login-wrap"><div class="login-card"><h1>Dashboard CDR</h1><div class="sub">ĐHNN – ĐHĐN</div><form id="loginForm"><input id="username" class="field" autocomplete="username" placeholder="Tài khoản" required><input id="password" class="field" type="password" autocomplete="current-password" placeholder="Mật khẩu" required><div id="loginErr" class="error" role="alert"></div><button id="loginBtn" class="btn wide" type="submit">Đăng nhập</button></form><div class="footer">Hệ thống theo dõi chuẩn đầu ra ngoại ngữ</div></div></section>
+<section id="app" class="hidden"><header class="top"><div><h1>Dashboard theo dõi CĐR</h1><small>Trường Đại học Ngoại ngữ – Đại học Đà Nẵng</small></div><div><span id="userInfo"></span> &nbsp; <button id="logout" class="btn">Đăng xuất</button></div></header><main class="layout"><div id="msg" class="status">Đang tải...</div><nav class="tabs"><button class="tab active" data-t="overview">Tổng quan</button><button class="tab" data-t="studentsPanel">Sinh viên</button><button class="tab" data-t="carePanel">SV cần chăm sóc</button><button class="tab" data-t="schoolsPanel">Theo trường</button><button class="tab adminOnly" data-t="usersPanel">Quản trị người dùng</button></nav><section id="overview" class="panel active"><h2>Tổng quan</h2><div class="cards"><div class="card">Tổng sinh viên<div id="total" class="metric">0</div></div><div class="card">Cần tư vấn<div id="care" class="metric">0</div></div><div class="card">Nguy cơ cao<div id="risk" class="metric">0</div></div><div class="card">Số trường<div id="schoolCount" class="metric">0</div></div></div><p class="muted">Số liệu hiển thị theo dữ liệu đã nạp vào D1. Hiện có thể chưa có dữ liệu sinh viên.</p><div id="roleBox" class="status"></div></section>
+<section id="studentsPanel" class="panel"><h2>Danh sách sinh viên</h2><div class="adminOnly status"><h3>Nhập / cập nhật dữ liệu bằng CSV (chỉ ADMIN)</h3><p class="muted">Cột bắt buộc: student_code, school_code. Các cột hỗ trợ: full_name, major, cohort, class_name. Mã trường: SPKT, BKA, SP, DUE, VKU, YD. Bản ghi trùng mã sinh viên sẽ được cập nhật.</p><input id="csvFile" type="file" accept=".csv,text/csv"><button id="importCsv" class="btn" type="button">Nhập / cập nhật CSV</button> <button id="sampleCsv" class="btn" type="button">Tải CSV mẫu</button><div id="importMsg" class="muted"></div></div><input id="studentSearch" class="field" placeholder="Tìm theo mã hoặc họ tên"><div id="studentEmpty" class="muted">Chưa có dữ liệu sinh viên.</div><div class="table-wrap"><table><thead><tr><th>Mã SV</th><th>Họ tên</th><th>Trường</th><th>Ngành</th><th>Khóa</th><th>Lớp</th></tr></thead><tbody id="studentBody"></tbody></table></div></section>
+<section id="carePanel" class="panel"><h2>Sinh viên cần chăm sóc, tư vấn</h2><input id="careSearch" class="field" placeholder="Tìm theo mã hoặc họ tên"><div id="careEmpty" class="muted">Chưa có hồ sơ chăm sóc.</div><div class="table-wrap"><table><thead><tr><th>Mức độ</th><th>Mã SV</th><th>Họ tên</th><th>Trường</th><th>Lý do</th><th>Trạng thái</th></tr></thead><tbody id="careBody"></tbody></table></div></section>
+<section id="schoolsPanel" class="panel"><h2>Danh sách trường</h2><div class="table-wrap"><table><thead><tr><th>Mã trường</th><th>Tên trường</th><th>Tình trạng dữ liệu</th></tr></thead><tbody id="schoolBody"></tbody></table></div></section>
+<section id="usersPanel" class="panel adminOnly"><h2>Quản trị người dùng</h2><p class="muted">Chỉ ADMIN được truy cập.</p><div class="toolbar"><input id="newUser" placeholder="Tên đăng nhập"><input id="newName" placeholder="Họ tên"><select id="newRole"><option value="BGH">BGH/ĐHĐN</option><option value="DHNN_QTDBCL">ĐHNN/KT&ĐBCLGD</option><option value="TRUONG_THANH_VIEN">Trường thành viên</option><option value="KHOA_CVHT">Khoa/CVHT</option><option value="ADMIN">Quản trị</option></select><select id="newSchool"><option value="">Không gán trường</option></select><input id="newPass" type="password" placeholder="Mật khẩu ban đầu"><button id="createUser" class="btn">Tạo người dùng</button></div><h3>Người dùng hiện có</h3><pre id="userList" class="user-list">Chưa tải danh sách.</pre></section></main></section>
 <script>
-const $=s=>document.querySelector(s);
-const fmt=n=>new Intl.NumberFormat('vi-VN').format(Number(n||0));
-const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-async function api(path,opt={}){
- const r=await fetch(path,{credentials:'include',...opt});
- let d={}; try{d=await r.json()}catch{}
- if(!r.ok) throw new Error(d.error||`HTTP ${r.status}`);
- return d;
-}
-function badge(x){
- const c=x==='Đã đạt'?'good':(x==='Rất cao'||x==='Cao'?'high':'mid');
- return `<span class="badge ${c}">${esc(x||'')}</span>`;
-}
-async function start(){
- try{
-  const me=await api('/api/me');
-  $('#login').classList.add('hidden');$('#app').classList.remove('hidden');
-  $('#who').textContent=`${me.user.full_name} • ${me.user.role_code}${me.user.school_id?' • '+me.user.school_id:''}`;
-  await load();
- }catch(e){/* not logged in */}
-}
-async function load(){
- const d=await api('/api/dashboard');
- $('#nStudents').textContent=fmt(d.kpi.students);
- $('#nAttained').textContent=fmt(d.kpi.attained);
- $('#nUnresolved').textContent=fmt(d.kpi.students-d.kpi.attained);
- $('#updated').textContent=new Date().toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'});
- $('#schools').innerHTML=(d.schools||[]).map(x=>{
-   const p=x.total?x.attained/x.total*100:0;
-   return `<div style="margin:12px 0"><div style="display:flex;justify-content:space-between"><b>${esc(x.school_name)}</b><span>${fmt(x.attained)}/${fmt(x.total)} (${p.toFixed(1)}%)</span></div><div class="bar"><span style="width:${p}%"></span></div></div>`
- }).join('')||'<div class="muted">Chưa có dữ liệu.</div>';
- $('#risks').innerHTML=(d.risks||[]).map(x=>`<div style="padding:11px 0;border-bottom:1px solid #e4eaf1;display:flex;justify-content:space-between">${badge(x.risk_level)}<b>${fmt(x.total)}</b></div>`).join('')||'<div class="muted">Chưa có dữ liệu.</div>';
- const schools=[...new Set((d.schools||[]).map(x=>x.school_name))];
- $('#school').innerHTML='<option value="">Tất cả</option>'+schools.map(x=>`<option>${esc(x)}</option>`).join('');
- await loadStudents();
- await loadCare();
-}
-async function loadStudents(){
- const u=new URL('/api/students',location.origin);
- if($('#q').value.trim())u.searchParams.set('q',$('#q').value.trim());
- if($('#school').value)u.searchParams.set('school',$('#school').value);
- const d=await api(u.pathname+u.search);
- $('#studentTable').innerHTML=d.rows.length?`<table><thead><tr><th>Mã SV</th><th>Họ tên</th><th>Trường</th><th>Khóa</th><th>Lớp</th><th>CĐR</th><th>Lần thi</th><th>Rủi ro</th></tr></thead><tbody>${d.rows.map(x=>`<tr><td>${esc(x.student_code)}</td><td>${esc(x.full_name)}</td><td>${esc(x.school_name)}</td><td>${esc(x.cohort)}</td><td>${esc(x.class_name)}</td><td>${badge(x.cdr_status)}</td><td>${fmt(x.attempts)}</td><td>${badge(x.risk_level)}</td></tr>`).join('')}</tbody></table>`:'<div class="muted">Không có dữ liệu phù hợp.</div>';
-}
-async function loadCare(){
- const d=await api('/api/care-cases');
- $('#careTable').innerHTML=d.rows.length?`<table><thead><tr><th>Mã SV</th><th>Họ tên</th><th>Trường</th><th>Khóa</th><th>Mức rủi ro</th><th>Lý do</th><th>Trạng thái</th></tr></thead><tbody>${d.rows.map(x=>`<tr><td>${esc(x.student_code)}</td><td>${esc(x.full_name)}</td><td>${esc(x.school_name)}</td><td>${esc(x.cohort)}</td><td>${badge(x.risk_level)}</td><td>${esc(x.reason)}</td><td>${esc(x.status)}</td></tr>`).join('')}</tbody></table>`:'<div class="muted">Chưa có trường hợp cần theo dõi.</div>';
-}
-$('#loginForm').onsubmit=async e=>{
- e.preventDefault();$('#loginErr').classList.add('hidden');
- try{await api('/api/login',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({username:$('#username').value,password:$('#password').value})});await start();}
- catch(err){$('#loginErr').textContent=err.message;$('#loginErr').classList.remove('hidden');}
-};
-$('#logout').onclick=async()=>{await api('/api/logout',{method:'POST'});location.reload()};
-$('#refresh').onclick=load;
-$('#school').onchange=loadStudents;
-let timer;$('#q').oninput=()=>{clearTimeout(timer);timer=setTimeout(loadStudents,350)};
-start();
-</script>
-</body></html>
+'use strict';let USER=null,students=[],care=[],schools=[];const $=s=>document.querySelector(s);const esc=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
+async function api(path,options={}){const response=await fetch(path,{credentials:'same-origin',...options});let data;try{data=await response.json()}catch{throw new Error('Máy chủ trả về dữ liệu không hợp lệ ('+response.status+')')}if(!response.ok)throw new Error(data.error||('Lỗi HTTP '+response.status));return data}
+function showLogin(message=''){ $('#login').classList.remove('hidden');$('#app').classList.add('hidden');$('#loginErr').textContent=message; }
+async function load(){try{const me=await api('/api/auth/me');if(!me.ok||!me.user){showLogin();return}USER=me.user;$('#login').classList.add('hidden');$('#app').classList.remove('hidden');$('#userInfo').textContent=(USER.full_name||USER.username)+' – '+(USER.role_label||USER.role);document.querySelectorAll('.adminOnly').forEach(x=>x.style.display=USER.role==='ADMIN'?'':'none');document.querySelectorAll('.tab[data-t]').forEach(x=>{const mods=USER.modules||[];x.style.display=mods.includes(x.dataset.t)?'':'none'});$('#roleBox').textContent='Quyền: '+(USER.permissions||[]).join(', ');$('#msg').textContent='Đã xác thực. Đang tải dữ liệu...';
+const outcomes=await Promise.allSettled([api('/api/stats'),api('/api/students'),api('/api/care'),api('/api/schools')]);if(outcomes[0].status==='fulfilled'){const s=outcomes[0].value;$('#total').textContent=s.totalStudents??0;schools=s.schools||[];const counts=s.care||[];$('#care').textContent=counts.find(x=>x.care_level==='CAN_TU_VAN')?.total||0;$('#risk').textContent=counts.find(x=>x.care_level==='NGUY_CO_CAO')?.total||0;$('#schoolCount').textContent=schools.length}else console.error('stats',outcomes[0].reason);
+students=outcomes[1].status==='fulfilled'?(outcomes[1].value.results||[]):[];care=outcomes[2].status==='fulfilled'?(outcomes[2].value.results||[]):[];if(outcomes[3].status==='fulfilled')schools=outcomes[3].value.results||schools;render();fillSchools();const failed=outcomes.filter(x=>x.status==='rejected');$('#msg').textContent=failed.length?'Đã đăng nhập nhưng '+failed.length+' API tải dữ liệu gặp lỗi. Mở Logs để kiểm tra.':'Đăng nhập thành công. '+(students.length?'Đã tải '+students.length+' sinh viên.':'Chưa có dữ liệu sinh viên trong D1.')+' Có '+schools.length+' trường.';
+}catch(e){console.error('Dashboard load error:',e);showLogin('Không thể mở Dashboard: '+e.message)}}
+function render(){const q=($('#studentSearch')?.value||'').toLowerCase();const filtered=students.filter(x=>(x.student_code||'').toLowerCase().includes(q)||(x.full_name||'').toLowerCase().includes(q));$('#studentBody').innerHTML=filtered.map(x=>`<tr><td>${esc(x.student_code)}</td><td>${esc(x.full_name)}</td><td>${esc(x.school_name)}</td><td>${esc(x.major)}</td><td>${esc(x.cohort)}</td><td>${esc(x.class_name)}</td></tr>`).join('');$('#studentEmpty').style.display=filtered.length?'none':'block';const cq=($('#careSearch')?.value||'').toLowerCase();const cf=care.filter(x=>(x.student_code||'').toLowerCase().includes(cq)||(x.full_name||'').toLowerCase().includes(cq));$('#careBody').innerHTML=cf.map(x=>`<tr><td>${esc(x.care_level)}</td><td>${esc(x.student_code)}</td><td>${esc(x.full_name)}</td><td>${esc(x.school_name)}</td><td>${esc(x.reason)}</td><td>${esc(x.status)}</td></tr>`).join('');$('#careEmpty').style.display=cf.length?'none':'block';$('#schoolBody').innerHTML=schools.map(x=>`<tr><td>${esc(x.code)}</td><td>${esc(x.name)}</td><td>${esc(x.data_status)}</td></tr>`).join('')}
+function fillSchools(){const sel=$('#newSchool');if(!sel)return;sel.innerHTML='<option value="">Không gán trường</option>'+schools.map(x=>`<option value="${Number(x.id)}">${esc(x.code)} – ${esc(x.name)}</option>`).join('')}
+document.querySelectorAll('.tab').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));document.querySelectorAll('.panel').forEach(x=>x.classList.remove('active'));b.classList.add('active');$('#'+b.dataset.t).classList.add('active');if(b.dataset.t==='usersPanel')loadUsers()}));
+$('#loginForm').addEventListener('submit',async ev=>{ev.preventDefault();const btn=$('#loginBtn');btn.disabled=true;btn.textContent='Đang đăng nhập...';$('#loginErr').textContent='';try{const result=await api('/api/auth/login',{method:'POST',headers:{'content-type':'application/json'},credentials:'same-origin',body:JSON.stringify({username:$('#username').value.trim(),password:$('#password').value})});if(!result.ok)throw new Error(result.error||'Đăng nhập thất bại');await load()}catch(e){console.error('Login error:',e);$('#loginErr').textContent=e.message||'Đăng nhập thất bại'}finally{btn.disabled=false;btn.textContent='Đăng nhập'}});
+$('#logout').addEventListener('click',async()=>{try{await api('/api/auth/logout',{method:'POST'})}finally{USER=null;showLogin();location.reload()}});$('#studentSearch').addEventListener('input',render);$('#careSearch').addEventListener('input',render);
+async function loadUsers(){if(USER?.role!=='ADMIN')return;try{const d=await api('/api/users');$('#userList').textContent=JSON.stringify(d.results||[],null,2)}catch(e){$('#userList').textContent='Không tải được người dùng: '+e.message}}
+$('#createUser').addEventListener('click',async()=>{try{await api('/api/users',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({username:$('#newUser').value.trim(),full_name:$('#newName').value.trim(),role:$('#newRole').value,school_id:$('#newSchool').value?Number($('#newSchool').value):null,password:$('#newPass').value})});$('#userList').textContent='Đã tạo người dùng. Đang tải lại...';await loadUsers();alert('Đã tạo người dùng')}catch(e){alert('Không tạo được người dùng: '+e.message)}});
+
+function parseCsv(text){const rows=[];let row=[],field='',quoted=false;text=text.replace(/^\uFEFF/,'');for(let i=0;i<text.length;i++){const c=text[i],n=text[i+1];if(quoted){if(c==='"'&&n==='"'){field+='"';i++}else if(c==='"')quoted=false;else field+=c}else if(c==='"')quoted=true;else if(c===','){row.push(field);field=''}else if(c==='\n'){row.push(field);rows.push(row);row=[];field=''}else if(c!=='\r')field+=c}if(field.length||row.length){row.push(field);rows.push(row)}if(!rows.length)return[];const headers=rows.shift().map(x=>x.trim());return rows.filter(r=>r.some(v=>String(v).trim())).map(r=>Object.fromEntries(headers.map((h,i)=>[h,(r[i]||'').trim()]))) }
+$('#importCsv')?.addEventListener('click',async()=>{const file=$('#csvFile').files[0];if(!file){$('#importMsg').textContent='Hãy chọn tệp CSV.';return}try{const rows=parseCsv(await file.text());const d=await api('/api/students/import',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({rows})});$('#importMsg').textContent=`Hoàn tất: ${d.imported} dòng thêm/cập nhật; ${d.skipped} dòng bỏ qua.`;await load()}catch(e){$('#importMsg').textContent='Lỗi nhập dữ liệu: '+e.message}});
+$('#sampleCsv')?.addEventListener('click',()=>{const csv='student_code,full_name,school_code,major,cohort,class_name\nSV0001,Nguyen Van A,SPKT,Ngon ngu Anh,K22,22NNA1\n';const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['\\ufeff'+csv],{type:'text/csv;charset=utf-8'}));a.download='cdrnn-mau-import.csv';a.click();URL.revokeObjectURL(a.href)});
+
+load();
+</script></body></html>

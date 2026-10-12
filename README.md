@@ -1,142 +1,46 @@
-# Bản sửa hoàn chỉnh – Dashboard CĐR UFLS
+# Dashboard CDRNN — gói GitHub + Cloudflare Worker/D1
 
-## Mục tiêu
-Bản này sửa lỗi đăng nhập "Tài khoản hoặc mật khẩu không đúng" bằng cách:
-- Có `password_hash` trong D1.
-- Hash mật khẩu bằng PBKDF2-SHA256 trên Cloudflare Workers Web Crypto.
-- Có session HttpOnly/Secure trong D1.
-- Có `/api/health`, `/api/login`, `/api/logout`, `/api/me`, `/api/dashboard`, `/api/students`, `/api/care-cases`.
-- Có migration D1.
-- Giao diện đăng nhập + dashboard chạy chung trên một Worker, tránh lỗi CORS do tách frontend/backend.
+## Chức năng trong gói
+- Giao diện chia thành các khu vực: Tổng quan, Sinh viên, Sinh viên cần chăm sóc, Theo trường, Quản trị người dùng.
+- ADMIN có quyền quản trị người dùng và nhập/cập nhật dữ liệu sinh viên bằng CSV.
+- Tài khoản phụ có vai trò giới hạn (BGH/ĐHĐN, ĐHNN/KT&ĐBCLGD, Trường thành viên, Khoa/CVHT). API kiểm tra quyền phía máy chủ; ẩn tab trên giao diện không phải là biện pháp bảo mật duy nhất.
+- Nhập CSV có ghi nhật ký và chỉ tài khoản có quyền `manage_data` mới thực hiện được.
+- Cấu hình Worker phục vụ cả giao diện và API cùng một origin; đây là cách phù hợp với các đường dẫn `/api/...` và cookie phiên hiện tại.
 
-Cloudflare hỗ trợ D1 qua Worker binding và PBKDF2 qua Web Crypto. Xem tài liệu chính thức:
-https://developers.cloudflare.com/d1/worker-api/
-https://developers.cloudflare.com/workers/runtime-apis/web-crypto/
-https://developers.cloudflare.com/d1/reference/migrations/
+## Tệp
+- `src/index.js`: Worker API, đăng nhập, phân quyền, quản trị người dùng, nhập dữ liệu.
+- `public/index.html`: giao diện Dashboard.
+- `migrations/0001_initial.sql`, `migrations/0002_rbac.sql`: cấu trúc D1.
+- `wrangler.toml`: binding Assets và D1.
 
-## 1. Quan trọng trước khi deploy
+## Cảnh báo quan trọng
+1. Đây là gói cập nhật mã nguồn; chưa được kiểm thử trên tài khoản Cloudflare thực tế của bạn. Không ghi đè bản đang chạy trước khi sao lưu.
+2. `wrangler.toml` đang chứa database ID `0ed9e5c6-5643-47ed-853b-b6a9f5524792` đã dùng trong dự án. Kiểm tra ID có đúng trong tài khoản Cloudflare của bạn.
+3. Cơ sở dữ liệu hiện tại đã có schema và dữ liệu/tài khoản riêng. Đừng chạy migration mù quáng hoặc tạo lại D1. Sao lưu trước, sau đó đối chiếu schema. Migration `CREATE TABLE IF NOT EXISTS` không tự sửa cấu trúc cột đã tồn tại.
+4. Gói này **không chứa mật khẩu ADMIN mặc định**. Tiếp tục dùng tài khoản ADMIN đã tạo trong D1 hiện tại; nếu không đăng nhập được thì cần kiểm tra đúng D1 binding và hash mật khẩu, không tự ý xóa bảng tài khoản.
+5. Cấu trúc import trong gói cập nhật bản ghi theo `student_code`, phù hợp schema migration của gói. Nếu D1 hiện tại có ràng buộc/schema khác, cần kiểm tra câu SQL trước khi deploy.
+6. CSV chứa dữ liệu sinh viên là dữ liệu cần bảo vệ. Không commit dữ liệu thật lên repository GitHub công khai.
 
-Mở `wrangler.toml` và thay:
+## Định dạng CSV
+Cột: `student_code,full_name,school_code,major,cohort,class_name`
+Mã trường: `SPKT`, `BKA`, `SP`, `DUE`, `VKU`, `YD`.
 
-`REPLACE_WITH_YOUR_EXISTING_D1_DATABASE_ID`
+Ví dụ:
+```csv
+student_code,full_name,school_code,major,cohort,class_name
+SV0001,Nguyen Van A,SPKT,Ngon ngu Anh,K22,22NNA1
+```
+Tệp CSV phải được rà soát trước khi nhập. Mã sinh viên đã tồn tại sẽ được cập nhật, không tạo bản ghi dự thi riêng cho từng lần thi vì schema hiện tại chỉ lưu hồ sơ sinh viên cơ bản.
 
-bằng **Database ID của D1 hiện tại `cdr-ta-ufl`**.
+## Cách đưa mã nguồn lên GitHub
+1. Tải ZIP và giải nén trên máy.
+2. Mở repo `phuongktdhnn-afk/CDRNN` trên GitHub.
+3. Khuyến nghị tạo branch thử nghiệm trước, ví dụ `test-cdrnn-update`.
+4. Tải nội dung bên trong `CDRNN_Dashboard_Ready` lên đúng thư mục gốc repository; không tạo thêm một lớp thư mục lồng nhau.
+5. Kiểm tra `wrangler.toml`, đặc biệt `database_id`, trước khi commit.
+6. Không triển khai lên production trước khi kiểm tra schema và sao lưu D1.
 
-Không tạo D1 mới nếu muốn giữ dữ liệu hiện tại.
+## Triển khai khuyến nghị
+Ứng dụng hiện là **Cloudflare Worker + Static Assets + D1**, không phải một trang Pages tĩnh độc lập. Không triển khai riêng thư mục `public` thành Pages nếu chưa cấu hình Pages Functions/proxy để chuyển tiếp `/api/...` tới API và chia sẻ cùng origin/cookie. Tiếp tục Worker hiện tại là đường triển khai ít rủi ro hơn.
 
-## 2. Nếu deploy bằng GitHub + Cloudflare Workers
-
-Repository cần giữ nguyên cấu trúc:
-
-- `src/index.js`
-- `public/index.html`
-- `migrations/0001_auth_and_core.sql`
-- `wrangler.toml`
-
-Sau khi kết nối GitHub với Worker, deploy theo cấu hình Wrangler.
-
-Nếu Worker đã có binding D1 trên Cloudflare Dashboard, kiểm tra binding phải có:
-- Variable name: `DB`
-- Database: `cdr-ta-ufl`
-
-Nếu Cloudflare dashboard đang dùng một tên binding khác, sửa `binding = "DB"` cho đúng tên binding hiện tại.
-
-## 3. Chạy migration trên D1 hiện tại
-
-Nếu dùng Wrangler:
-
-`npx wrangler d1 migrations apply DB --remote`
-
-Migration chỉ bổ sung các bảng/column cần thiết bằng `CREATE TABLE IF NOT EXISTS`; không xóa dữ liệu hiện hữu.
-
-## 4. Tạo tài khoản quản trị
-
-Không đặt mật khẩu mặc định trong mã nguồn.
-
-Trên Cloudflare Worker, tạo một Secret tên:
-
-`SETUP_KEY`
-
-Giá trị là một chuỗi bí mật do bạn tự đặt.
-
-Sau khi deploy, gọi POST:
-
-`/api/setup`
-
-Header:
-
-`x-setup-key: <SETUP_KEY>`
-
-Body ví dụ:
-
-{
-  "username": "admin.cdr",
-  "password": "MAT_KHAU_MOI_TOI_THIEU_10_KY_TU",
-  "full_name": "Quản trị Dashboard CĐR",
-  "email": "",
-  "role_code": "ADMIN"
-}
-
-Có thể thực hiện bằng REST client hoặc Cloudflare dashboard.
-
-Sau khi tạo tài khoản, `/api/setup` vẫn yêu cầu `SETUP_KEY`.
-
-## 5. Kiểm tra nhanh
-
-Mở:
-
-`/api/health`
-
-Kết quả mong đợi dạng:
-
-{
-  "ok": true,
-  "db": true,
-  "counts": {
-    "users": 1,
-    "students": 0,
-    "care_cases": 0
-  }
-}
-
-Nếu `students = 0` thì đó là do D1 hiện chưa có dữ liệu sinh viên; không phải lỗi đăng nhập.
-
-## 6. Tài khoản BGH / DHNN123
-
-Không dùng chung mật khẩu ADMIN.
-
-Tạo một tài khoản riêng:
-
-{
-  "username": "dhhn123",
-  "full_name": "BGH",
-  "role_code": "BGH"
-}
-
-Có thể dùng `DHNN123` nếu đó là quy ước tài khoản của hệ thống hiện tại; username được lưu theo đúng chuỗi bạn nhập.
-
-## 7. Lưu ý về dữ liệu hiện tại
-
-Bản `dashboard.html` cũ trong Library là dashboard chạy trực tiếp trên Excel và không có backend authentication/session. File đó đọc Excel bằng thư viện XLSX phía trình duyệt. Bản sửa này chuyển phần xác thực sang Worker + D1, nên không còn phụ thuộc vào việc JavaScript phía trình duyệt tự kiểm tra mật khẩu.
-
-Nếu D1 hiện tại đã có bảng `users` với dữ liệu cũ, migration không tự xóa. Nếu bảng `users` thiếu `password_hash`, cần đảm bảo migration đã bổ sung column này trước khi tạo tài khoản.
-
-## 8. Sau khi đăng nhập
-
-Dashboard hiển thị:
-- Tổng sinh viên
-- Đã đạt CĐR
-- Chưa đạt
-- Thống kê theo trường
-- Mức cảnh báo
-- Danh sách sinh viên
-- Danh sách cần theo dõi
-
-Các API đều yêu cầu session, trừ `/api/health`, `/api/login` và `/api/setup`.
-
-## 9. Bảo mật
-
-- Mật khẩu không lưu dạng rõ.
-- Session token không lưu trực tiếp trong D1; D1 lưu SHA-256 của token.
-- Cookie session là HttpOnly + Secure + SameSite=Lax.
-- Không đưa `SETUP_KEY` hoặc mật khẩu vào GitHub.
+Nếu repo đang nối CI/CD với Worker, commit branch thử nghiệm sẽ có thể kích hoạt deploy tùy cấu hình. Hãy kiểm tra cấu hình deployment trước khi commit vào branch production. Sau deploy, kiểm tra `/api/health`, đăng nhập ADMIN, quyền tài khoản phụ và nhập thử 1–2 dòng dữ liệu giả trước khi nhập dữ liệu thật.

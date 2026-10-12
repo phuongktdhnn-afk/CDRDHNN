@@ -1,260 +1,63 @@
-const SESSION_COOKIE = "cdr_session";
-const SESSION_DAYS = 7;
+const ROLE_LABELS={ADMIN:'Quản trị hệ thống',BGH:'BGH/ĐHĐN',DHNN_QTDBCL:'ĐHNN/KT&ĐBCLGD',TRUONG_THANH_VIEN:'Trường thành viên',KHOA_CVHT:'Khoa/CVHT'};
+const ROLE_PERMS={ADMIN:['view_all','manage_users','manage_data','manage_care'],BGH:['view_all'],DHNN_QTDBCL:['view_all','manage_data','manage_care'],TRUONG_THANH_VIEN:['view_school','manage_care_school'],KHOA_CVHT:['view_school','manage_care_school']};
+const ROLE_MODULES={ADMIN:['overview','studentsPanel','carePanel','schoolsPanel','usersPanel'],BGH:['overview','schoolsPanel'],DHNN_QTDBCL:['overview','studentsPanel','carePanel','schoolsPanel'],TRUONG_THANH_VIEN:['overview','studentsPanel','carePanel','schoolsPanel'],KHOA_CVHT:['overview','studentsPanel','carePanel']};
+export default {async fetch(request,env){const url=new URL(request.url);try{
+ if(request.method==='OPTIONS')return new Response('',{headers:cors()});
+ if(url.pathname==='/api/health')return json({ok:true,service:'cdr-ta-ufl-dashboard'});
+ if(url.pathname==='/api/auth/login'&&request.method==='POST')return login(request,env);
+ if(url.pathname==='/api/auth/logout'&&request.method==='POST')return logout(request,env);
+ if(url.pathname==='/api/auth/me')return me(request,env);
+ if(url.pathname.startsWith('/api/')){const user=await auth(request,env);if(!user)return json({ok:false,error:'UNAUTHORIZED'},401);
+  if(url.pathname==='/api/stats'){if(!can(user,'view_all')&&!can(user,'view_school'))return json({ok:false,error:'FORBIDDEN'},403);return stats(env,user)}
+  if(url.pathname==='/api/students/import'&&request.method==='POST')return importStudents(request,env,user);
+  if(url.pathname==='/api/students'){if(!['ADMIN','BGH','DHNN_QTDBCL','TRUONG_THANH_VIEN','KHOA_CVHT'].includes(user.role))return json({ok:false,error:'FORBIDDEN'},403);return students(env,user,url)}
+  if(url.pathname==='/api/care'){if(!['ADMIN','DHNN_QTDBCL','TRUONG_THANH_VIEN','KHOA_CVHT'].includes(user.role))return json({ok:false,error:'FORBIDDEN'},403);return care(env,user,url)}
+  if(url.pathname==='/api/schools'){if(!['ADMIN','BGH','DHNN_QTDBCL','TRUONG_THANH_VIEN'].includes(user.role))return json({ok:false,error:'FORBIDDEN'},403);return schools(env,user)}
+  if(url.pathname==='/api/users'&&request.method==='GET')return users(env,user);
+  if(url.pathname==='/api/users'&&request.method==='POST')return createUser(request,env,user);
+  return json({ok:false,error:'NOT_FOUND'},404);
+ }
+ return env.ASSETS.fetch(request);
+ }catch(e){return json({ok:false,error:e?.message||'Internal error'},500)}}};
+function cors(){return {'access-control-allow-origin':'*','access-control-allow-methods':'GET,POST,OPTIONS','access-control-allow-headers':'Content-Type,Authorization'}}
+function json(d,status=200,extra={}){return new Response(JSON.stringify(d),{status,headers:{'content-type':'application/json; charset=UTF-8',...cors(),...extra}})}
+async function sha(s){const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s));return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('')}
+async function token(){const b=new Uint8Array(32);crypto.getRandomValues(b);return [...b].map(x=>x.toString(16).padStart(2,'0')).join('')}
+function getCookie(req,n){const c=req.headers.get('Cookie')||'';const m=c.match(new RegExp('(?:^|; )'+n+'=([^;]+)'));return m?decodeURIComponent(m[1]):null}
+async function auth(req,env){const h=req.headers.get('Authorization')||'';const t=h.startsWith('Bearer ')?h.slice(7):getCookie(req,'cdr_session');if(!t)return null;const th=await sha(t);return await env.DB.prepare("SELECT u.id,u.username,u.full_name,u.role,u.school_id,u.must_change_password,u.active FROM dashboard_sessions s JOIN dashboard_users u ON u.id=s.user_id WHERE s.token_hash=? AND s.expires_at>datetime('now') AND u.active=1").bind(th).first()||null}
+async function login(req,env){let b;try{b=await req.json()}catch{return json({ok:false,error:'Dữ liệu đăng nhập không hợp lệ'},400)}const username=String(b.username||'').trim(),password=String(b.password||'');if(!username||!password)return json({ok:false,error:'Vui lòng nhập tài khoản và mật khẩu'},400);const u=await env.DB.prepare('SELECT * FROM dashboard_users WHERE username=? AND active=1').bind(username).first();if(!u||u.password_hash!==(await sha(password)))return json({ok:false,error:'Tài khoản hoặc mật khẩu không đúng'},401);const raw=await token(),th=await sha(raw);await env.DB.prepare("INSERT INTO dashboard_sessions(token_hash,user_id,expires_at) VALUES(?,?,datetime('now','+12 hours'))").bind(th,u.id).run();return json({ok:true,user:{id:u.id,username:u.username,full_name:u.full_name,role:u.role,role_label:ROLE_LABELS[u.role],school_id:u.school_id,must_change_password:!!u.must_change_password,permissions:ROLE_PERMS[u.role]||[]}},200,{'set-cookie':`cdr_session=${encodeURIComponent(raw)}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=43200`})}
+async function logout(req,env){const t=getCookie(req,'cdr_session');if(t)await env.DB.prepare('DELETE FROM dashboard_sessions WHERE token_hash=?').bind(await sha(t)).run();return json({ok:true},200,{'set-cookie':'cdr_session=; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=0'})}
+async function me(req,env){const u=await auth(req,env);return json({ok:!!u,user:u?{...u,role_label:ROLE_LABELS[u.role],permissions:ROLE_PERMS[u.role]||[],modules:ROLE_MODULES[u.role]||[]}:null},u?200:401)}
+function can(u,p){return (ROLE_PERMS[u.role]||[]).includes(p)}
+function schoolFilter(u,alias='s'){return can(u,'view_all')?{sql:'1=1',bind:[]}:{sql:`${alias}.school_id=?`,bind:[u.school_id]}}
+async function stats(env,u){const f=schoolFilter(u);const st=await env.DB.prepare(`SELECT COUNT(*) total FROM students s WHERE ${f.sql}`).bind(...f.bind).first();const schools=await env.DB.prepare(can(u,'view_all')?'SELECT id,code,name,data_status FROM schools ORDER BY id':'SELECT id,code,name,data_status FROM schools WHERE id=?').bind(...(can(u,'view_all')?[]:[u.school_id])).all();const c=await env.DB.prepare(`SELECT c.care_level,COUNT(*) total FROM care_cases c JOIN students s ON s.id=c.student_id WHERE ${can(u,'view_all')?'1=1':'s.school_id=?'} GROUP BY c.care_level`).bind(...(can(u,'view_all')?[]:[u.school_id])).all();return json({totalStudents:st?.total||0,care:c.results||[],schools:schools.results||[],user:{id:u.id,username:u.username,full_name:u.full_name,role:u.role,school_id:u.school_id}})}
+async function students(env,u,url){const limit=Math.max(1,Math.min(Number(url.searchParams.get('limit')||500),500));const f=schoolFilter(u);const r=await env.DB.prepare(`SELECT s.id,s.student_code,s.full_name,s.major,s.cohort,s.class_name,sc.code school_code,sc.name school_name FROM students s LEFT JOIN schools sc ON sc.id=s.school_id WHERE ${f.sql} ORDER BY s.id LIMIT ?`).bind(...f.bind,limit).all();return json({results:r.results||[]})}
+async function care(env,u,url){const f=schoolFilter(u,'s');const r=await env.DB.prepare(`SELECT c.id,c.student_id,c.care_level,c.reason,c.status,s.student_code,s.full_name,sc.code school_code,sc.name school_name FROM care_cases c JOIN students s ON s.id=c.student_id LEFT JOIN schools sc ON sc.id=s.school_id WHERE ${f.sql} ORDER BY c.id DESC LIMIT 500`).bind(...f.bind).all();return json({results:r.results||[]})}
+async function schools(env,u){const r=await env.DB.prepare(can(u,'view_all')?'SELECT id,code,name,status,data_status FROM schools ORDER BY id':'SELECT id,code,name,status,data_status FROM schools WHERE id=?').bind(...(can(u,'view_all')?[]:[u.school_id])).all();return json({results:r.results||[]})}
+async function users(env,u){if(!can(u,'manage_users'))return json({ok:false,error:'FORBIDDEN'},403);const r=await env.DB.prepare('SELECT id,username,full_name,role,school_id,active,must_change_password,created_at FROM dashboard_users ORDER BY id').all();return json({results:r.results||[]})}
+async function createUser(req,env,u){if(!can(u,'manage_users'))return json({ok:false,error:'FORBIDDEN'},403);const b=await req.json();const username=String(b.username||'').trim(),password=String(b.password||'');if(!username||!password||!b.role)return json({ok:false,error:'Thiếu username/password/role'},400);if(!ROLE_LABELS[b.role])return json({ok:false,error:'Role không hợp lệ'},400);if(['TRUONG_THANH_VIEN','KHOA_CVHT'].includes(b.role)&&!b.school_id)return json({ok:false,error:'Vai trò này cần chọn trường'},400);try{await env.DB.prepare('INSERT INTO dashboard_users(username,full_name,role,school_id,password_hash,must_change_password,active) VALUES(?,?,?,?,?,?,1)').bind(username,String(b.full_name||''),b.role,b.school_id||null,await sha(password),1).run();await env.DB.prepare('INSERT INTO dashboard_audit_logs(user_id,action,target,detail) VALUES(?,?,?,?)').bind(u.id,'CREATE_USER',username,`role=${b.role}`).run();return json({ok:true})}catch(e){return json({ok:false,error:e.message},400)}}
 
-function json(data, status = 200, extra = {}) {
-  return new Response(JSON.stringify(data), {
-    status,
-    headers: {"content-type": "application/json; charset=utf-8", ...extra}
-  });
+
+// ADMIN-only CSV/JSON import. Existing records are updated by student_code.
+async function importStudents(request,env,user){
+ if(user.role!=='ADMIN')return json({ok:false,error:'FORBIDDEN: Chỉ ADMIN được nhập/cập nhật dữ liệu.'},403);
+ let b;try{b=await request.json()}catch{return json({ok:false,error:'Dữ liệu gửi lên không hợp lệ'},400)}
+ if(!Array.isArray(b.rows)||b.rows.length>10000)return json({ok:false,error:'Danh sách phải có tối đa 10.000 dòng'},400);
+ let imported=0,skipped=0;
+ for(const row of b.rows){
+  const code=String(row.student_code||row.ma_sv||'').trim();
+  const name=String(row.full_name||row.ho_ten||'').trim();
+  const schoolCode=String(row.school_code||row.ma_truong||'').trim().toUpperCase();
+  if(!code||!schoolCode){skipped++;continue;}
+  const school=await env.DB.prepare('SELECT id FROM schools WHERE code=?').bind(schoolCode).first();
+  if(!school){skipped++;continue;}
+  await env.DB.prepare(`INSERT INTO students(student_code,full_name,school_id,major,cohort,class_name,updated_at)
+   VALUES(?,?,?,?,?,?,CURRENT_TIMESTAMP)
+   ON CONFLICT(student_code) DO UPDATE SET full_name=excluded.full_name,school_id=excluded.school_id,major=excluded.major,cohort=excluded.cohort,class_name=excluded.class_name,updated_at=CURRENT_TIMESTAMP`)
+   .bind(code,name,school.id,String(row.major||row.nganh||''),String(row.cohort||row.khoa||''),String(row.class_name||row.lop||'')).run();
+  await env.DB.prepare("UPDATE schools SET data_status='DA_CO_DU_LIEU',updated_at=CURRENT_TIMESTAMP WHERE id=?").bind(school.id).run();
+  imported++;
+ }
+ await env.DB.prepare('INSERT INTO dashboard_audit_logs(user_id,action,target,detail) VALUES(?,?,?,?)').bind(user.id,'IMPORT_STUDENTS','students',`imported=${imported}; skipped=${skipped}`).run();
+ return json({ok:true,imported,skipped});
 }
-
-function corsHeaders(origin) {
-  const allowed = origin || "*";
-  return {
-    "access-control-allow-origin": allowed,
-    "access-control-allow-credentials": "true",
-    "access-control-allow-headers": "content-type",
-    "access-control-allow-methods": "GET,POST,PUT,DELETE,OPTIONS"
-  };
-}
-
-function withCors(resp, origin) {
-  const h = new Headers(resp.headers);
-  for (const [k,v] of Object.entries(corsHeaders(origin))) h.set(k,v);
-  return new Response(resp.body, {status: resp.status, headers:h});
-}
-
-function b64(bytes) {
-  let s = "";
-  const a = new Uint8Array(bytes);
-  for (let i=0;i<a.length;i++) s += String.fromCharCode(a[i]);
-  return btoa(s).replaceAll("+","-").replaceAll("/","_").replaceAll("=","");
-}
-
-function unb64(s) {
-  s = s.replaceAll("-","+").replaceAll("_","/");
-  while (s.length % 4) s += "=";
-  const raw = atob(s);
-  const a = new Uint8Array(raw.length);
-  for (let i=0;i<raw.length;i++) a[i]=raw.charCodeAt(i);
-  return a;
-}
-
-async function pbkdf2(password, saltBytes, iterations=120000) {
-  const key = await crypto.subtle.importKey(
-    "raw", new TextEncoder().encode(password), "PBKDF2", false, ["deriveBits"]
-  );
-  return new Uint8Array(await crypto.subtle.deriveBits(
-    {name:"PBKDF2", hash:"SHA-256", salt:saltBytes, iterations}, key, 256
-  ));
-}
-
-async function makePasswordHash(password) {
-  const salt = crypto.getRandomValues(new Uint8Array(16));
-  const iterations = 120000;
-  const digest = await pbkdf2(password, salt, iterations);
-  return `pbkdf2$sha256$${iterations}$${b64(salt)}$${b64(digest)}`;
-}
-
-async function verifyPassword(password, encoded) {
-  const p = String(encoded || "").split("$");
-  if (p.length !== 5 || p[0] !== "pbkdf2" || p[1] !== "sha256") return false;
-  const iterations = Number(p[2]);
-  if (!Number.isFinite(iterations) || iterations < 10000) return false;
-  const actual = await pbkdf2(password, unb64(p[3]), iterations);
-  const expected = unb64(p[4]);
-  if (actual.length !== expected.length) return false;
-  let diff = 0;
-  for (let i=0;i<actual.length;i++) diff |= actual[i] ^ expected[i];
-  return diff === 0;
-}
-
-function parseCookies(req) {
-  const out = {};
-  const raw = req.headers.get("cookie") || "";
-  raw.split(";").forEach(x => {
-    const i=x.indexOf("=");
-    if(i>0) out[x.slice(0,i).trim()] = decodeURIComponent(x.slice(i+1).trim());
-  });
-  return out;
-}
-
-async function currentUser(req, env) {
-  const token = parseCookies(req)[SESSION_COOKIE];
-  if (!token) return null;
-  const row = await env.DB.prepare(`
-    SELECT u.id,u.username,u.full_name,u.email,u.role_code,u.school_id,u.status
-    FROM sessions s JOIN users u ON u.id=s.user_id
-    WHERE s.token_hash=? AND s.expires_at>datetime('now') AND u.status='active'
-  `).bind(await sha256(token)).first();
-  return row || null;
-}
-
-async function sha256(value) {
-  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
-  return b64(buf);
-}
-
-async function createSession(userId, env) {
-  const token = b64(crypto.getRandomValues(new Uint8Array(32))) + "." +
-    b64(crypto.getRandomValues(new Uint8Array(16)));
-  const hash = await sha256(token);
-  await env.DB.prepare(
-    `INSERT INTO sessions(token_hash,user_id,expires_at) VALUES(?,?,datetime('now','+7 days'))`
-  ).bind(hash,userId).run();
-  return token;
-}
-
-function sessionCookie(token) {
-  return `${SESSION_COOKIE}=${encodeURIComponent(token)}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${SESSION_DAYS*86400}`;
-}
-function expiredCookie() {
-  return `${SESSION_COOKIE}=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0`;
-}
-
-async function requireUser(req, env) {
-  const user = await currentUser(req, env);
-  return user;
-}
-
-async function api(req, env, url) {
-  const method = req.method;
-  if (method === "OPTIONS") return new Response(null, {status:204});
-
-  if (url.pathname === "/api/health") {
-    try {
-      const r = await env.DB.prepare("SELECT 1 AS ok").first();
-      const counts = await env.DB.batch([
-        env.DB.prepare("SELECT COUNT(*) AS total FROM users"),
-        env.DB.prepare("SELECT COUNT(*) AS total FROM students"),
-        env.DB.prepare("SELECT COUNT(*) AS total FROM care_cases")
-      ]);
-      return json({ok:true, db:r?.ok===1, counts:{
-        users: counts[0]?.results?.[0]?.total ?? 0,
-        students: counts[1]?.results?.[0]?.total ?? 0,
-        care_cases: counts[2]?.results?.[0]?.total ?? 0
-      }});
-    } catch(e) {
-      return json({ok:false,error:String(e)},500);
-    }
-  }
-
-  if (url.pathname === "/api/setup" && method === "POST") {
-    const setupKey = req.headers.get("x-setup-key") || "";
-    if (!env.SETUP_KEY || setupKey !== env.SETUP_KEY) return json({ok:false,error:"SETUP_KEY không đúng"},403);
-    const body = await req.json();
-    const username = String(body.username||"").trim();
-    const password = String(body.password||"");
-    if (!username || password.length < 10) return json({ok:false,error:"Tài khoản và mật khẩu hợp lệ (mật khẩu tối thiểu 10 ký tự) là bắt buộc"},400);
-    const hash = await makePasswordHash(password);
-    await env.DB.prepare(`
-      INSERT INTO users(username,email,full_name,role_code,status,password_hash)
-      VALUES(?,?,?,?,?,?)
-      ON CONFLICT(username) DO UPDATE SET password_hash=excluded.password_hash,status='active'
-    `).bind(
-      username,
-      String(body.email||""),
-      String(body.full_name||username),
-      String(body.role_code||"ADMIN"),
-      "active",
-      hash
-    ).run();
-    return json({ok:true,message:"Đã tạo/cập nhật tài khoản"});
-  }
-
-  if (url.pathname === "/api/login" && method === "POST") {
-    const body = await req.json();
-    const username = String(body.username||"").trim();
-    const password = String(body.password||"");
-    const user = await env.DB.prepare(
-      `SELECT * FROM users WHERE username=? AND status='active'`
-    ).bind(username).first();
-    if (!user || !(await verifyPassword(password,user.password_hash))) {
-      return json({ok:false,error:"Tài khoản hoặc mật khẩu không đúng"},401);
-    }
-    await env.DB.prepare(`DELETE FROM sessions WHERE expires_at<=datetime('now')`).run();
-    const token = await createSession(user.id, env);
-    await env.DB.prepare(`UPDATE users SET last_login_at=datetime('now') WHERE id=?`).bind(user.id).run();
-    return json({ok:true,user:{
-      id:user.id,username:user.username,full_name:user.full_name,
-      email:user.email,role_code:user.role_code,school_id:user.school_id
-    }},200,{"set-cookie":sessionCookie(token)});
-  }
-
-  if (url.pathname === "/api/logout" && method === "POST") {
-    const token = parseCookies(req)[SESSION_COOKIE];
-    if(token) await env.DB.prepare(`DELETE FROM sessions WHERE token_hash=?`).bind(await sha256(token)).run();
-    return json({ok:true},200,{"set-cookie":expiredCookie()});
-  }
-
-  const user = await requireUser(req, env);
-  if (!user) return json({ok:false,error:"Chưa đăng nhập"},401);
-
-  if (url.pathname === "/api/me") return json({ok:true,user});
-
-  if (url.pathname === "/api/dashboard") {
-    const total = await env.DB.prepare(`SELECT COUNT(*) total FROM students`).first();
-    const attained = await env.DB.prepare(`SELECT COUNT(*) total FROM students WHERE cdr_status='Đã đạt'`).first();
-    const risk = await env.DB.prepare(`
-      SELECT risk_level, COUNT(*) total FROM care_cases
-      GROUP BY risk_level ORDER BY total DESC
-    `).all();
-    const schools = await env.DB.prepare(`
-      SELECT COALESCE(school_name,'Chưa xác định') school_name,
-             COUNT(*) total,
-             SUM(CASE WHEN cdr_status='Đã đạt' THEN 1 ELSE 0 END) attained
-      FROM students GROUP BY school_name ORDER BY total DESC
-    `).all();
-    return json({ok:true,
-      kpi:{students:total?.total||0,attained:attained?.total||0},
-      risks:risk.results||[],schools:schools.results||[]
-    });
-  }
-
-  if (url.pathname === "/api/students") {
-    const q = (url.searchParams.get("q")||"").trim();
-    const school = (url.searchParams.get("school")||"").trim();
-    let sql=`SELECT id,student_code,full_name,school_name,cohort,class_name,cdr_status,latest_result,attempts,risk_level
-             FROM students WHERE 1=1`;
-    const args=[];
-    if(q){sql+=` AND (student_code LIKE ? OR full_name LIKE ?)`;args.push(`%${q}%`,`%${q}%`)}
-    if(school){sql+=` AND school_name=?`;args.push(school)}
-    sql+=` ORDER BY school_name,student_code LIMIT 2000`;
-    const r=await env.DB.prepare(sql).bind(...args).all();
-    return json({ok:true,rows:r.results||[]});
-  }
-
-  if (url.pathname === "/api/care-cases") {
-    const r = await env.DB.prepare(`
-      SELECT id,student_code,full_name,school_name,cohort,risk_level,reason,status,updated_at
-      FROM care_cases ORDER BY
-      CASE risk_level WHEN 'Rất cao' THEN 1 WHEN 'Cao' THEN 2 WHEN 'Trung bình' THEN 3 ELSE 4 END,
-      updated_at DESC LIMIT 2000
-    `).all();
-    return json({ok:true,rows:r.results||[]});
-  }
-
-  return json({ok:false,error:"API không tồn tại"},404);
-}
-
-async function asset(req, env, path) {
-  const key = path === "/" ? "index.html" : path.replace(/^\/+/,"");
-  const obj = await env.ASSETS.get(key);
-  if (!obj) return new Response("Not found",{status:404});
-  const headers = new Headers();
-  obj.writeHttpMetadata(headers);
-  headers.set("etag",obj.httpEtag);
-  return new Response(obj.body,{headers});
-}
-
-export default {
-  async fetch(req, env) {
-    const url = new URL(req.url);
-    try {
-      if (url.pathname.startsWith("/api/")) return api(req,env,url);
-      return asset(req,env,url.pathname);
-    } catch(e) {
-      return json({ok:false,error:String(e)},500);
-    }
-  }
-};

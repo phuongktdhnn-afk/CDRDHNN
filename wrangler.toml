@@ -1,6 +1,6 @@
-name = "cdr-ta-ufl-dashboard"
+name = "cdrnn"
 main = "src/index.js"
-compatibility_date = "2026-09-25"
+compatibility_date = "2026-09-24"
 
 [assets]
 directory = "./public"
@@ -8,6 +8,5 @@ binding = "ASSETS"
 
 [[d1_databases]]
 binding = "DB"
-database_name = "cdr-ta-ufl"
-database_id = "REPLACE_WITH_YOUR_EXISTING_D1_DATABASE_ID"
-migrations_dir = "migrations"
+database_name = "cdrnn"
+database_id = "0ed9e5c6-5643-47ed-853b-b6a9f5524792"
